@@ -14,6 +14,7 @@ plugins {
 }
 
 val versionPropsFile = rootProject.file("version.properties")
+val s23Only = providers.gradleProperty("s23Only").map { it.toBoolean() }.getOrElse(false)
 
 fun readVersionProps(): Properties {
     val props = Properties()
@@ -38,10 +39,13 @@ android {
 
     defaultConfig {
         applicationId = "com.snothin.ghostsam"
+        if (s23Only) applicationId = "com.snothin.ghostsam.s23"
         minSdk = 33
         targetSdk = 36
         versionCode = currentVersionCode()
-        versionName = currentVersionName()
+        versionName = currentVersionName() + if (s23Only) "-s23-uapi5" else ""
+        buildConfigField("boolean", "S23_ONLY", s23Only.toString())
+        manifestPlaceholders["appLabel"] = if (s23Only) "GhostSam S23" else "@string/app_name"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -92,6 +96,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    if (s23Only) {
+        sourceSets.getByName("main").assets.setSrcDirs(emptyList<String>())
     }
 
     compileOptions {
@@ -145,9 +153,42 @@ val syncCompanionApk by tasks.registering(SyncCompanionApkTask::class) {
     dependsOn(":companion:assembleRelease")
 }
 
+abstract class SyncS23PayloadsTask : DefaultTask() {
+    @get:InputFile
+    abstract val ksud: RegularFileProperty
+
+    @get:InputFile
+    abstract val module: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun sync() {
+        val out = outputDir.get().asFile
+        out.deleteRecursively()
+        val daemon = out.resolve("payloads/ksud/ksud")
+        val ko = out.resolve("payloads/dirtyfrag/dfr_lkm-android13-5.15.ko")
+        daemon.parentFile.mkdirs()
+        ko.parentFile.mkdirs()
+        ksud.get().asFile.copyTo(daemon, overwrite = true)
+        module.get().asFile.copyTo(ko, overwrite = true)
+    }
+}
+
+val syncS23Payloads by tasks.registering(SyncS23PayloadsTask::class) {
+    ksud.set(layout.projectDirectory.file("src/main/assets/payloads/ksud/ksud"))
+    module.set(layout.projectDirectory.file("src/main/assets/payloads/dirtyfrag/dfr_lkm-android13-5.15.ko"))
+    outputDir.set(layout.buildDirectory.dir("s23-assets"))
+}
+
 androidComponents {
     onVariants { variant ->
-        variant.sources.assets?.addGeneratedSourceDirectory(syncCompanionApk) { it.outputDir }
+        if (s23Only) {
+            variant.sources.assets?.addGeneratedSourceDirectory(syncS23Payloads) { it.outputDir }
+        } else {
+            variant.sources.assets?.addGeneratedSourceDirectory(syncCompanionApk) { it.outputDir }
+        }
     }
 }
 
@@ -157,6 +198,28 @@ val verifyPayloads by tasks.registering {
         .file("src/main/java/com/snothin/ghostsam/data/device/SeriesTable.kt").asFile
 
     doLast {
+        if (s23Only) {
+            val expected = mapOf("ksud/ksud" to 3, "dirtyfrag/dfr_lkm-android13-5.15.ko" to 1)
+            expected.forEach { (rel, type) ->
+                val file = payloadsDir.resolve(rel)
+                if (!file.isFile) throw GradleException("S23 payload missing: $rel")
+                val bytes = file.readBytes()
+                fun byteAt(i: Int) = bytes[i].toInt() and 0xff
+                val valid = bytes.size >= 64 && byteAt(0) == 0x7f &&
+                    byteAt(1) == 69 && byteAt(2) == 76 && byteAt(3) == 70 &&
+                    byteAt(4) == 2 && byteAt(5) == 1 && byteAt(16) == type &&
+                    byteAt(17) == 0 && byteAt(18) == 183 && byteAt(19) == 0
+                if (!valid) throw GradleException("S23 payload must be little-endian arm64 ELF (type $type): $rel")
+                if (type == 3 && !bytes.toString(Charsets.ISO_8859_1).contains("(uapi: 5)")) {
+                    throw GradleException("S23 requires rebuilt UAPI 5 ksud; run Build GhostSam S23")
+                }
+                if (type == 1 && (bytes.size < 4096 || bytes.size % 4 != 0)) {
+                    throw GradleException("S23 DFR module must be >= 4096 bytes and aligned to four bytes")
+                }
+            }
+            logger.lifecycle("==> S23 payload check passed: android13-5.15 / UAPI 5 / standalone")
+            return@doLast
+        }
         val series = mutableListOf<Pair<String, String>>()   // id to kmi
         var id: String? = null
         var kmi: String? = null
@@ -261,6 +324,7 @@ tasks.matching { it.name == "preBuild" }.configureEach {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
