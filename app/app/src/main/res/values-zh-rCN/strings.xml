@@ -183,6 +183,7 @@
     <string name="settings_scheme_dfr">GhostLock · DirtyFrag</string>
     <string name="settings_scheme_standalone">DirtyFrag</string>
     <string name="settings_ksud_variant">KernelSU 版本</string>
+    <string name="settings_ksud_variant_s23">KernelSU（管理器 3.3.1 · UAPI 5）</string>
     <string name="settings_ksud_variant_default">KernelSU（3.3.0 · 32601）</string>
     <string name="settings_ksud_variant_next">KernelSU-Next（3.4.0 · 33294）</string>
     <string name="settings_ksud_variant_summary">下次执行生效，更换内核需重启</string>
@@ -555,4 +556,5 @@
     <string name="terminal_title">终端</string>
     <string name="terminal_banner">GhostSam 终端\n后端：su / 无线调试 / Shizuku\n\n</string>
     <string name="terminal_failed">[错误] 无法启动 Shell(无可用通道)\n</string>
+    <string name="s23_target_mismatch">此 S23 专用版仅支持 SM-S9110、固件 S9110ZCS8FZI1、Android 16、内核 5.15.189-android13-8-3251900-abS9110ZCS8FZI1。当前设备信息不匹配。</string>
 </resources>
