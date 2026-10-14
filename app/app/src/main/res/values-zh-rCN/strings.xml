@@ -471,6 +471,7 @@
     <string name="exploit_log_fail_verify">KernelSU 验证超时（模块未加载或 su 无应答）</string>
     <string name="exploit_log_verify_wait">验证中：模块未加载 / su 不可用（%1$ds）</string>
     <string name="exploit_log_verified">KernelSU 验证通过（uid=0）</string>
+    <string name="exploit_log_module_loaded_su_unverified">KernelSU 模块已加载；尚未验证本应用获得 uid=0，管理器身份也未验证。</string>
     <string name="exploit_log_verified_noksu">临时 root 通道验证通过（permissive 会话）</string>
     <string name="exploit_log_noksu_hint">第三方终端（Termux 等）可用 /data/local/tmp/cve-2026-43499-root（-c 单条 / 无参交互）</string>
     <string name="exploit_log_completed">完成，耗时 %1$.1fs · exit 0</string>
