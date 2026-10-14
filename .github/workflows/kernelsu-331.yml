@@ -1,0 +1,205 @@
+name: Build GhostSam S23
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/fix-s23-kernelsu-331]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  KERNELSU_REPOSITORY: snothin/KernelSU
+  KERNELSU_REVISION: abbd7be7fb5e0af607c2a85e02efae03044bba86
+  S23_KMI: android13-5.15
+
+jobs:
+  kernel-modules:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ylarod/ddk-min:android13-5.15-20260828
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.KERNELSU_REPOSITORY }}
+          ref: ${{ env.KERNELSU_REVISION }}
+          path: KernelSU
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Restore the audited UAPI 5 contract
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/KernelSU"
+          python3 scripts/prepare-kernelsu.py KernelSU
+      - name: Build the Samsung KernelSU module
+        working-directory: KernelSU/kernel
+        run: |
+          test -d "$KDIR"
+          test "$(basename "$KDIR")" = "$S23_KMI"
+          CONFIG_KSU=m CC=clang make CONFIG_KSU_SAMSUNG_KDP=y CONFIG_KSU_SAMSUNG_DEFEX=y
+          mkdir -p "$GITHUB_WORKSPACE/modules"
+          cp kernelsu.ko "$GITHUB_WORKSPACE/modules/${S23_KMI}_kernelsu.ko"
+          llvm-strip -d "$GITHUB_WORKSPACE/modules/${S23_KMI}_kernelsu.ko"
+      - name: Verify the KernelSU module format
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import struct
+
+          kmi = os.environ["S23_KMI"]
+          data = Path(f"modules/{kmi}_kernelsu.ko").read_bytes()
+          assert len(data) >= 64 and data[:6] == b"\x7fELF\x02\x01"
+          assert struct.unpack_from("<HH", data, 16) == (1, 183)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: s23-kernel-modules
+          path: modules/*.ko
+          if-no-files-found: error
+
+  ksud:
+    needs: kernel-modules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.KERNELSU_REPOSITORY }}
+          ref: ${{ env.KERNELSU_REVISION }}
+          path: KernelSU
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 scripts/prepare-kernelsu.py KernelSU
+      - uses: actions/download-artifact@v4
+        with:
+          name: s23-kernel-modules
+          path: modules
+      - name: Embed exactly the selected KernelSU module
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import shutil
+
+          kmi = os.environ["S23_KMI"]
+          source = Path("modules")
+          expected = {f"{kmi}_kernelsu.ko"}
+          assert {p.name for p in source.iterdir()} == expected
+          target = Path("KernelSU/userspace/ksud/bin/aarch64")
+          helpers = {name: (target / name).read_bytes() for name in ("bootctl", "busybox", "waitsys")}
+          for old in target.glob("*_kernelsu.ko"):
+              old.unlink()
+          shutil.copyfile(source / f"{kmi}_kernelsu.ko", target / f"{kmi}_kernelsu.ko")
+          assert {p.name for p in target.glob("*_kernelsu.ko")} == {f"{kmi}_kernelsu.ko"}
+          assert all((target / name).read_bytes() == data for name, data in helpers.items())
+          PY
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r29
+      - name: Set up Rust and bindgen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-dev pkg-config
+          rustup update stable
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk --locked
+      - name: Check and build ksud
+        working-directory: KernelSU
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          source .github/scripts/setup-rust-build.sh aarch64-linux-android 26
+          cargo ndk -t arm64-v8a -p 26 check --locked -p ksud
+          cargo ndk -t arm64-v8a -p 26 clippy --locked -p ksud
+          cargo fmt --all -- --check
+          cargo build --locked --release --target aarch64-linux-android -p ksud
+      - name: Package the S23 payloads
+        run: |
+          mkdir -p s23-payloads/ksud
+          cp KernelSU/target/aarch64-linux-android/release/ksud s23-payloads/ksud/ksud
+          python3 -c 'from pathlib import Path; assert b"(uapi: 5)" in Path("s23-payloads/ksud/ksud").read_bytes(), "ksud must use UAPI 5"'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: s23-payloads
+          path: s23-payloads/
+          if-no-files-found: error
+
+  apk:
+    needs: ksud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: s23-payloads
+          path: s23-payloads
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - name: Install the Android build dependencies
+        run: |
+          sdkmanager "platforms;android-37" "build-tools;36.0.0" "ndk;30.0.16248370" "cmake;3.22.1"
+      - name: Stage the rebuilt payloads
+        run: |
+          cp s23-payloads/ksud/ksud app/app/src/main/assets/payloads/ksud/ksud
+      - name: Test driver compatibility and APK packaging checks
+        run: |
+          cc -D_GNU_SOURCE -Wall -Wextra -Werror -Iexploit/src/common tests/ksu_control_test.c -o /tmp/ksu_control_test
+          /tmp/ksu_control_test
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Test and build the S23 APK
+        working-directory: app
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug -Ps23Only=true --no-daemon
+      - name: Verify the APK payloads, package and signature
+        run: |
+          apk=app/app/build/outputs/apk/debug/app-debug.apk
+          python3 scripts/verify-s23-apk.py "$apk" \
+            --ksud s23-payloads/ksud/ksud \
+            --dfr-module "app/app/src/main/assets/payloads/dirtyfrag/dfr_lkm-${S23_KMI}.ko"
+          test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest application-id "$apk")" = com.snothin.ghostsam.s23
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
+      - name: Package the verified APK and build information
+        run: |
+          mkdir -p out
+          cp app/app/build/outputs/apk/debug/app-debug.apk out/GhostSam-S23-KernelSU-3.3.1.apk
+          cat > out/BUILD-INFO.txt <<EOF
+          application_id=com.snothin.ghostsam.s23
+          ghostsam_revision=$GITHUB_SHA
+          kernelsu_repository=$KERNELSU_REPOSITORY
+          kernelsu_revision=$KERNELSU_REVISION
+          kmi=$S23_KMI
+          dfr_module=tracked helper from ghostsam_revision; unchanged by this workflow
+          uapi=5
+          manager=3.3.1
+          model=SM-S9110
+          android=16
+          build=BP4A.251205.006.S9110ZCS8FZI1
+          kernel=5.15.189-android13-8-3251900-abS9110ZCS8FZI1
+          signing=Android debug key generated by this CI run
+          validation=build,unit-tests,payload-hashes,application-id,APK-signature
+          device_validation=not performed by this workflow
+          EOF
+          cd out
+          sha256sum GhostSam-S23-KernelSU-3.3.1.apk BUILD-INFO.txt > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ghostsam-s23-uapi5-apk
+          path: out/
+          if-no-files-found: error
