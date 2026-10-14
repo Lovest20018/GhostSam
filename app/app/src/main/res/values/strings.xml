@@ -184,6 +184,7 @@
     <string name="settings_scheme_dfr">GhostLock · DirtyFrag</string>
     <string name="settings_scheme_standalone">DirtyFrag</string>
     <string name="settings_ksud_variant">KernelSU version</string>
+    <string name="settings_ksud_variant_s23">KernelSU (Manager 3.3.1 · UAPI 5)</string>
     <string name="settings_ksud_variant_default">KernelSU (3.3.0 · 32601)</string>
     <string name="settings_ksud_variant_next">KernelSU-Next (3.4.0 · 33294)</string>
     <string name="settings_ksud_variant_summary">Takes effect on the next run, reboot to replace the kernel</string>
@@ -555,4 +556,5 @@
     <string name="terminal_title">Terminal</string>
     <string name="terminal_banner">GhostSam Terminal\nBackend: su / wireless debug / Shizuku\n\n</string>
     <string name="terminal_failed">[error] Failed to spawn shell (no channel available)\n</string>
+    <string name="s23_target_mismatch">This S23 edition supports only SM-S9110 / S9110ZCS8FZI1 / Android 16 / kernel 5.15.189-android13-8-3251900-abS9110ZCS8FZI1. Device information does not match.</string>
 </resources>
