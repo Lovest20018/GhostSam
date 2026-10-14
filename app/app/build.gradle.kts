@@ -35,6 +35,7 @@ val keystoreProps = Properties().apply {
 android {
     namespace = "com.snothin.ghostsam"
     compileSdk = 37
+    if (s23Only) compileSdkMinor = 0
     ndkVersion = "30.0.16248370"
 
     defaultConfig {
