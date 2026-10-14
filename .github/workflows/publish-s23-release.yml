@@ -1,0 +1,153 @@
+name: Publish GhostSam S23 Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/publish-s23-release]
+    paths: [.github/workflows/publish-s23-release.yml]
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: publish-s23-ksu-331-uapi5
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_RUN_ID: '38540095485'
+      BUILD_REVISION: 04d08781825b3548300a239f6be9db7759737c06
+      RELEASE_TAG: s23-ksu-3.3.1-uapi5
+    steps:
+      - name: Verify and download the successful S23 build
+        run: |
+          test "$GITHUB_REPOSITORY" = Lovest20018/GhostSam
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > build-run.json
+          python3 - <<'PY'
+          import json
+          import os
+
+          run = json.load(open("build-run.json"))
+          assert run["head_sha"] == os.environ["BUILD_REVISION"]
+          assert run["status"] == "completed" and run["conclusion"] == "success"
+          assert run["repository"]["full_name"] == os.environ["GITHUB_REPOSITORY"]
+          PY
+          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --name ghostsam-s23-uapi5-apk --dir release-assets
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import os
+
+          assets = Path("release-assets")
+          assert {p.name for p in assets.iterdir()} == {
+              "GhostSam-S23-KernelSU-3.3.1.apk", "BUILD-INFO.txt", "SHA256SUMS"
+          }
+          expected = {
+              "GhostSam-S23-KernelSU-3.3.1.apk": "0f22112b4ec0eacb683b65a09114ff0c9521f9af69a3c47da60fd748c4df9701",
+              "BUILD-INFO.txt": "1addc4e49eebe5a7613c82da686fff3f382f257e5228cedeff1271bac01afce2",
+          }
+          for name, digest in expected.items():
+              assert hashlib.sha256((assets / name).read_bytes()).hexdigest() == digest
+          assert f'ghostsam_revision={os.environ["BUILD_REVISION"]}' in (assets / "BUILD-INFO.txt").read_text()
+          PY
+          (cd release-assets && sha256sum -c SHA256SUMS)
+      - name: Create the S23 pre-release and upload verified assets
+        run: |
+          cat > RELEASE-NOTES.md <<'NOTES'
+          国行 Galaxy S23 专用测试版，为官方 KernelSU Manager 3.3.1 同源重建 UAPI 5 的 ksud 与三星 KernelSU 模块，解决旧 UAPI 2 的接口兼容问题。
+          
+          适用设备与固件：
+          
+          | 项目 | 要求 |
+          | --- | --- |
+          | 型号 | SM-S9110（国行 Galaxy S23） |
+          | 固件 | S9110ZCS8FZI1 |
+          | 系统 | One UI 8.5 / Android 16（SDK 36） |
+          | 编译编号 | BP4A.251205.006.S9110ZCS8FZI1 |
+          | 完整内核 | 5.15.189-android13-8-3251900-abS9110ZCS8FZI1 |
+          | KMI | android13-5.15 |
+          | 管理器 | 官方 KernelSU Manager 3.3.1 |
+          
+          应用名称为 **GhostSam S23**，包名为 `com.snothin.ghostsam.s23`，固定使用 DirtyFrag standalone 与官方 KernelSU。执行前会检查型号、编译编号、SDK 和完整内核版本；不匹配时停止。
+          
+          安装与验证：
+          
+          1. 下载附件 `GhostSam-S23-KernelSU-3.3.1.apk` 并安装，保留官方 KernelSU Manager 3.3.1。
+          2. **先重启手机**，再打开 GhostSam S23，按页面指引完成 standalone 流程。旧 KernelSU 驱动会保留到本次启动结束，替换 APK 不能直接替换已加载的驱动。
+          3. 检查 Manager 是否不再提示“需要更新内核”，并验证 root 授权与 `su -c id`。
+          4. 如失败，请提供 GhostSam 完整日志和 Manager 页面截图。
+          
+          已通过 CI 编译、单元测试、APK 载荷一致性、应用 ID 和 APK 签名检查。APK 仅包含 S23 所需的 ksud 与 `dfr_lkm-android13-5.15.ko`，保留原 DFR 安装辅助模块。下载产物的 SHA-256 已核对一致。
+          
+          **这是 Android debug 签名的测试版本，尚未通过真机验证。** 5.15 的 DirtyFrag 安装路径属于预测支持，是否能在该三星固件中成功安装和初始化仍需真机确认。
+          
+          APK SHA-256：
+          
+          ```text
+          0f22112b4ec0eacb683b65a09114ff0c9521f9af69a3c47da60fd748c4df9701
+          ```
+          
+          附件 `SHA256SUMS` 可用于校验 APK 与 `BUILD-INFO.txt`。
+          
+          构建来源：[GitHub Actions #4](https://github.com/Lovest20018/GhostSam/actions/runs/38540095485) · [源码提交 04d0878](https://github.com/Lovest20018/GhostSam/commit/04d08781825b3548300a239f6be9db7759737c06) · [详细说明](https://github.com/Lovest20018/GhostSam/blob/04d08781825b3548300a239f6be9db7759737c06/docs/KernelSU-3.3.1.zh.md)
+          NOTES
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')" = "$BUILD_REVISION"
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --target "$BUILD_REVISION" --prerelease \
+              --title 'GhostSam S23 · KernelSU 3.3.1 / UAPI 5（测试版）' \
+              --notes-file RELEASE-NOTES.md
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > release.json
+          python3 - <<'PY' > missing-assets.txt
+          from pathlib import Path
+          import hashlib
+          import json
+
+          release = json.load(open("release.json"))
+          assert not release["draft"] and release["prerelease"]
+          published = {a["name"]: a for a in release["assets"]}
+          for path in sorted(Path("release-assets").iterdir()):
+              existing = published.get(path.name)
+              if existing is None:
+                  print(path)
+              else:
+                  assert existing["state"] == "uploaded"
+                  assert existing["size"] == path.stat().st_size
+                  assert existing["digest"] == "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+          PY
+          while IFS= read -r asset; do
+            gh release upload "$RELEASE_TAG" "$asset" --repo "$GITHUB_REPOSITORY"
+          done < missing-assets.txt
+      - name: Verify the published release assets
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > release.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+
+          release = json.load(open("release.json"))
+          assert release["tag_name"] == os.environ["RELEASE_TAG"]
+          assert not release["draft"] and release["prerelease"]
+          published = {a["name"]: a for a in release["assets"]}
+          expected = {p.name: p for p in Path("release-assets").iterdir()}
+          assert set(published) == set(expected)
+          for name, path in expected.items():
+              asset = published[name]
+              digest = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+              assert asset["state"] == "uploaded" and asset["size"] == path.stat().st_size
+              assert asset["digest"] == digest
+              print(name, digest)
+          print(release["html_url"])
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(
+              f'Published [GhostSam S23]({release["html_url"]}) with all three verified assets.\n'
+          )
+          PY
