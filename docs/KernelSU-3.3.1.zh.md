@@ -45,7 +45,7 @@ APK 显示名称为 **GhostSam S23**，包名为 `com.snothin.ghostsam.s23`，
    push 会启动 **Build GhostSam S23**。也可以合并工作流后从 Actions
    手动执行该工作流。
 2. 工作流依次构建 Samsung KernelSU 模块、嵌入该模块的 ksud、S23 APK。
-   APK 构建使用 JDK 21、SDK 37、NDK 30.0.16248370 和 CMake 3.22.1。
+   APK 构建使用 JDK 21、SDK 37.0、NDK 30.0.16248370 和 CMake 3.22.1。
 3. 成功后下载 `ghostsam-s23-uapi5-apk` artifact，内含
    `GhostSam-S23-KernelSU-3.3.1.apk`、构建信息和 `SHA256SUMS`。
    在解压目录执行 `sha256sum -c SHA256SUMS` 核对文件。
@@ -60,7 +60,7 @@ APK 是标准 debug 签名的测试版本。工作流验证包名、APK 签名�
 
 ```bash
 cd app
-./gradlew :app:testDebugUnitTest :app:assembleDebug -Ps23Only=true --no-daemon
+./gradlew :app:testDebugUnitTest :app:assembleDebug -Ps23Only=true --no-daemon --no-configuration-cache
 ```
 
 `verifyPayloads` 拒绝旧 UAPI 的 ksud 和错误格式的辅助模块。
