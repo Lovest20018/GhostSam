@@ -271,16 +271,17 @@ jobs:
           附件包含 APK、`SHA256SUMS`、`BUILD-INFO.txt`。
           NOTES
           printf '\n构建来源：https://github.com/%s/actions/runs/%s\n源码提交：`%s`\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$GITHUB_SHA" >> RELEASE-NOTES.md
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')" = "$GITHUB_SHA"
-          else
+          release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id")
+          if [ -z "$release_id" ]; then
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" --draft --prerelease \
               --title 'GhostSam S23 · KernelSU 3.3.1 r2（管理器识别测试版）' \
               --notes-file RELEASE-NOTES.md \
               out/GhostSam-S23-KernelSU-3.3.1.apk out/BUILD-INFO.txt out/SHA256SUMS
+            release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id")
           fi
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > release.json
+          test -n "$release_id"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > release.json
           python3 - <<'PY'
           from pathlib import Path
           import hashlib
@@ -290,6 +291,7 @@ jobs:
           release = json.load(open("release.json"))
           assert release["tag_name"] == os.environ["RELEASE_TAG"]
           assert release["prerelease"]
+          assert release["target_commitish"] == os.environ["GITHUB_SHA"]
           published = {a["name"]: a for a in release["assets"]}
           expected = {p.name: p for p in Path("out").iterdir()}
           assert set(published) == set(expected)
@@ -300,8 +302,7 @@ jobs:
               assert asset["digest"] == digest
               print(name, digest)
           PY
-          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > release.json
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" -F draft=false > release.json
           python3 - <<'PY'
           from pathlib import Path
           import json
