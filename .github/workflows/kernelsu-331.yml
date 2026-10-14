@@ -118,10 +118,11 @@ jobs:
         working-directory: KernelSU
         env:
           ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+          ANDROID_NDK_ROOT: ${{ steps.ndk.outputs.ndk-path }}
         run: |
           source .github/scripts/setup-rust-build.sh aarch64-linux-android 26
-          cargo ndk -t arm64-v8a -p 26 check --locked -p ksud
-          cargo ndk -t arm64-v8a -p 26 clippy --locked -p ksud
+          cargo ndk -t arm64-v8a --platform 26 check --locked --package ksud
+          cargo ndk -t arm64-v8a --platform 26 clippy --locked --package ksud
           cargo fmt --all -- --check
           cargo build --locked --release --target aarch64-linux-android -p ksud
       - name: Package the S23 payloads
