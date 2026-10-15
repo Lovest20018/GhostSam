@@ -2,8 +2,12 @@
 
 整理日期：2026-10-15。
 
-本文描述维护分支的当前源码。源码版本为 `0.2.3-s23-uapi5-r3`（build 63），
+本文描述 fork 主线 `main` 的当前源码。源码版本为 `0.2.3-s23-uapi5-r3`（build 63），
 已经生成的 r2 APK 不包含本轮界面整理。尚未生成或发布 r3 APK。
+
+仓库中英文首页均以 **GhostSam S23** 为项目展示名，介绍 S23 的目标固件、
+授权流程和构建方式；应用显示名和首页标题也使用此名称。
+GitHub 仓库路径为 `Lovest20018/GhostSam`。
 
 ## 当前首页
 
@@ -62,8 +66,9 @@ S23 构建固定使用 standalone 路径和官方 KernelSU。首页标题为 **G
 
 - `origin`：用户 fork `Lovest20018/GhostSam`。
 - `upstream`：原作者仓库 `snothin/GhostSam`。
+- `main`：fork 的 S23 主线，已合入此前的 3 个维护提交并推送到 `origin/main`。
 - `upstream-track`：本地跟踪 `upstream/main`。
-- `s23/maintenance`：S23 定制维护分支。
+- `s23/maintenance`：保留此前整理的本地分支，后续同步从最新 `main` 开始。
 - 上游基线：`818faef4a278353a22c3481a01a6eaedf8088a3d`，v0.2.3。
 - 既有源码保存提交：`5492115`。本轮整理在其后单独提交。
 - 已补齐上游可用历史；2026-10-15 查询到上游 main 仍为上述基线。
@@ -95,7 +100,7 @@ python scripts/check-upstream.py --json
 决定同步后，先保存工作目录，再在临时分支合并。下列临时分支名称仅作示例：
 
 ```powershell
-git switch s23/maintenance
+git switch main
 git status --short
 git switch -c s23/merge-review
 git merge upstream/main
@@ -103,7 +108,7 @@ git merge upstream/main
 
 工作目录有未保存改动时先处理，不能直接覆盖。冲突解决后检查 S23 目标限制、
 首页状态和点击动作、standalone 结果处理、资源、构建脚本及 payload 校验。
-验证通过后再将维护分支快进到合并结果；不要把 S23 提交写入 `upstream-track`。
+验证通过后，将临时分支的结果合并回 `main` 并推送；不要把 S23 提交写入 `upstream-track`。
 同时将 `maintenance/s23-baseline.json` 中的 GhostSam 基线更新为已经接受的
 上游提交，再运行检查器和测试；后续报告才只包含下一批增量。
 
@@ -114,7 +119,8 @@ git merge upstream/main
 
 维护分支已加入 `Build GhostSam S23` 构建触发范围。该分支运行构建与测试，
 发布步骤只允许历史 r2 分支执行，避免维护构建覆盖已发布的 r2 资产。
-本文不代表已经推送维护分支或运行远程 CI。
+当前 `main` 不在 push 自动构建范围内，可从 Actions 手动选择 `main` 运行，
+成功后下载 artifact。合并推送源码不代表已经运行 CI 或生成 r3 APK。
 
 完整 Android 构建仍需要仓库指定的 JDK 21、SDK 37.0、NDK 30、CMake 及同源
 UAPI 5 payload。不能使用旧资产跳过检查：

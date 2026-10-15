@@ -1,183 +1,108 @@
-# GhostSam
+# GhostSam S23
 
 **中文** | [English](README.md)
 
-面向三星 Galaxy S22 / S26 / Z Fold8 的内核提权工具包（Android 12 及以上，
-内核 5.10-6.18），附带一个通过 ADB 驱动全流程的 Android 管理端 App。
+面向国行 **三星 Galaxy S23（SM-S9110，固件 S9110ZCS8FZI1）** 的临时 root
+应用，基于 [snothin/GhostSam](https://github.com/snothin/GhostSam) 适配。
+本 fork 固定使用 DirtyFrag standalone 路径与官方 **KernelSU Manager 3.3.1**，
+配套构建 UAPI 5 驱动和 ksud。
 
-源码树包含三条按机型划分的 Ghostlock 漏洞利用链（竞争性利用）、一条按内核
-版本匹配的 dirtyfrag 安装链、一个共享的用户态层，以及负责打包预构建 payload
-的管理端 App。
+[下载 r2 测试版 APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r2)
+· [S23 构建与兼容说明](docs/KernelSU-3.3.1.zh.md)
+· [应用首页与上游维护说明](docs/Home-copy-and-upstream.zh.md)
 
-## 概览
+## 支持范围
 
-- **目标机型**：Galaxy S22（`s22`）、Galaxy S26（`s26`）、Galaxy Z Fold8
-  （`zf8`），覆盖 Snapdragon 与 Exynos 平台。
-- **安装路径**：
-  - **dirtyfrag（推荐，更快）**：单次运行即完成——经由 xfrm-ESP 页缓存
-    4 字节写（CVE-2026-43284）部署 KernelSU 内核模块并直接 late-load，无需
-    赢下竞争。
-  - **Ghostlock 链**：面向所选系列的竞争性利用；运行过程中设备会重启，之后
-    由 App 完成 KernelSU late-load。
-- **内存破坏原语（CVE-2026-43499）**：把一个 futex PI 释放后使用（UAF）竞争
-  转化为一次受控的 8 字节内核写；以 `misc` / `simple_attr` 文件描述符作为写
-  载体，进而构建任意内核读写。Z Fold8 链使用基于 `io_submit` 的写路径。
-- **root 阶段**：在 `system_unbound_wq` 上伪造一个 `work_struct`（函数为
-  `call_usermodehelper_exec_work`），由内核以 init 身份启动我们的 helper；
-  不修改凭证结构体，KDP 的 EL2 守卫无从触发。
-- **root 通道**：`su_daemon` 在 `/data/local/tmp/temp_su.sock` 上维持一个
-  root shell，贯穿整个会话。
-- **持久化（临时 root）**：late-load KernelSU 或 KernelSU-Next，root 保持到
-  下次重启为止（重启后重新跑链即可恢复）；Ghostlock 链中 `ksud` 以 bind
-  mount 覆盖一个休眠的系统二进制，使基于路径的 DEFEX 规则看到的始终是白
-  名单目标。
+| 项目 | 要求 |
+| --- | --- |
+| 机型 | 国行 Galaxy S23，SM-S9110 |
+| 固件 | S9110ZCS8FZI1 |
+| 编译编号 | BP4A.251205.006.S9110ZCS8FZI1 |
+| 系统 | Android 16 / SDK 36 |
+| 完整内核版本 | 5.15.189-android13-8-3251900-abS9110ZCS8FZI1 |
+| KMI | android13-5.15 |
+| 管理器 | 官方 KernelSU Manager 3.3.1 |
 
-## 支持的机型
+应用在执行前核对目标信息，不匹配时停止。这台设备虽然运行 Android 16，
+内核仍为 android13-5.15。其他机型、其他固件，以及上游的 S22 / S26 / Z Fold8
+支持范围，均不能视为本 S23 专用构建的兼容承诺。
 
-### Ghostlock 链（按机型匹配）
+## 使用方法
 
-固件按内核基线匹配，而非逐 build 硬编码。每个系列携带一张生成的表：每个内核
-基线一条偏移记录（17-18 个符号偏移），每个已知 build 一行；运行期按
-series / codename / model / build 四个维度匹配，未收录的组合一律 fail-closed
-（不发起任何内核写）。
+1. 安装 **GhostSam S23** 和官方 **KernelSU Manager 3.3.1**。
+   S23 版包名为 `com.snothin.ghostsam.s23`，可与原版 GhostSam 同时安装。
+2. 首次使用或完整重启后，打开 GhostSam S23，执行获取临时 root。
+   S23 版固定使用 standalone 和官方 KernelSU。
+3. 如果 KSU 已显示 **“已越狱”**，先进入 KSU 的 **“超级用户”**，
+   授予 **GhostSam S23** su 权限，再返回应用。单次 su 检测失败不能说明需要重新加载。
+4. 应用验证 su 可用后，首页显示 **“KernelSU 已启用”**。
+   从该卡片打开 KSU，再使用管理器中的软重启。
 
-| 系列    | 基线数 | 已知 build 数 | 机型 / 备注                                              |
-| ------- | ------ | ------------- | -------------------------------------------------------- |
-| s22     | 4      | 66            | SM-S9010 / S9060 / S9080 ...（骁龙、Exynos 2200）        |
-| s26     | 4      | 153           | SM-S9420 / S9470 / S9480 ...（骁龙、Exynos），One UI 8.5 |
-| s26-ui9 | 2      | 6             | One UI 9 布局，由 io_submit 链执行                       |
-| zf8     | 6      | 73            | SM-F9710 / F9760 ...（Z Fold8）                          |
+用户已在上述目标设备上反馈：授予 GhostSam su 权限后，从 GhostSam 打开 KSU，
+软重启可以正常使用。临时 root 在完整重启后需要重新获取；测试新版驱动时，
+软重启不能替代完整重启来切换已加载的驱动。
 
-未收录固件可在运行期通过 `/data/local/tmp/ghostsam-lines.conf` 提供自定义
-基线；格式由 `exploit/src/common/params_custom.h` 校验。
+## 源码与安装包状态
 
-### dirtyfrag 链（按内核版本匹配）
+| 版本 | 状态 |
+| --- | --- |
+| r2 | 已发布的测试版 APK，安装注意事项见对应 Release |
+| r3（`0.2.3-s23-uapi5-r3`，build 63） | 当前 `main` 源码，包含新的首页状态和授权提示；尚未构建或发布 r3 APK |
 
-dirtyfrag 链为每个 KMI 提供一个内核模块（App 资产中的 `dfr_lkm-<kmi>.ko`），
-App 按设备内核选择对应模块。随包支持的 KMI：
-
-| KMI            | 状态     | 备注                            |
-| -------------- | -------- | ------------------------------- |
-| android12-5.10 | 已测试   |                                 |
-| android13-5.10 | 未测试   |                                 |
-| android13-5.15 | 已测试   |                                 |
-| android14-5.15 | 未测试   |                                 |
-| android14-6.1  | 部分支持 | 仅 ≤6.1.71 内核；6.1.72+ 不支持 |
-| android15-6.6  | 已测试   |                                 |
-| android16-6.12 | 已测试   |                                 |
-| android17-6.18 | 未测试   |                                 |
-
-## 仓库结构
-
-```
-app/                             Android 管理端 App（Kotlin / Jetpack Compose）
-  app/src/main/assets/payloads/  预构建 payload，随 APK 一起打包
-exploit/
-  src/common/                    共享层：日志、选项、参数表、KernelSnitch
-                                 探测、KSU 协议、su_daemon、boot log、
-                                 利用链骨架
-  src/chains/pselect/            pselect 写链 + attr 载体 + UMH root 阶段
-  src/chains/iosubmit/           io_submit 写链（zf8、One UI 9 的 s26）
-  src/chains/dirtyfrag/          xfrm-ESP 页缓存存储安装链 + LKM 装载器
-  src/series/s22|s26|zf8/        各系列的入口、参数表与汇编
-```
+r3 首页区分正在检测、管理器未安装、准备执行、执行中、已加载待授权、已启用。
+这些界面改动需要安装新构建才能看到；GitHub 源码更新不会自动更新手机上的 r2。
 
 ## 构建
 
-### App
+完整构建可进入 [Actions](https://github.com/Lovest20018/GhostSam/actions/workflows/kernelsu-331.yml)，
+选择 **Build GhostSam S23**，在 **Run workflow** 中选择 `main` 手动运行。
+工作流从固定源码重建三星 KernelSU 驱动与 ksud，再构建、校验 S23 APK。
+成功后下载该次运行的 `ghostsam-s23-uapi5-apk` artifact。
 
-所有 payload 已预构建于 `app/app/src/main/assets/payloads/` 下，APK 可独立
-构建：
+当前推送 `main` 不会自动启动该工作流。手动构建 `main` 会产出 artifact；
+历史 r2 的 Release 发布步骤只对原分支开放。
+
+本地构建需要 JDK 21、SDK 37.0、NDK 30.0.16248370、CMake 3.22.1，
+以及同源重建的 UAPI 5 payload。先按[构建说明](docs/KernelSU-3.3.1.zh.md)
+准备 payload，再执行：
 
 ```bash
 cd app
-./gradlew assembleRelease
+./gradlew :app:testDebugUnitTest :app:assembleDebug -Ps23Only=true --no-daemon --no-configuration-cache
 ```
 
-Gradle 任务 `:app:verifyPayloads` 会在构建时校验 payload 集合：每个系列目录
-必须提供 `preload.so` 与 `su_daemon`，`payloads/ksud/` 必须提供 `ksud` 与
-`ksud-next`，`payloads/dirtyfrag/` 必须提供 `dfr_payload` 及每个受支持 KMI
-对应的一个 `dfr_lkm-<kmi>.ko`。
+S23 版只打包 ksud 与 android13-5.15 安装辅助模块，排除其他 KMI、
+KernelSU-Next 和 companion APK。
 
-### 原生 payload
+## 与上游的关系
 
-构建原生侧需要 Android NDK r30（或带 aarch64 sysroot 的宿主机 clang）。
-`exploit/Makefile` 是唯一构建入口，产物落在 `exploit/build/`：
+本 fork 的 S23 改动已合入 **`main` 主线**。原项目为
+[snothin/GhostSam](https://github.com/snothin/GhostSam)，当前基于 v0.2.3
+（`818faef`）。上游完整工具包和机型列表见
+[上游原版说明](https://github.com/snothin/GhostSam/blob/818faef4a278353a22c3481a01a6eaedf8088a3d/README.zh.md)。
+S23 首页状态与中英文文案放在独立文件中，方便后续审查、合并上游更新。
+
+在已配置 `upstream` 远程的本地仓库中检查上游变化：
 
 ```bash
-cd exploit
-make            # 全量：各系列 + dirtyfrag payload
-make s26        # 或单个目标：s26 / s22 / zf8 / dirtyfrag
+python scripts/check-upstream.py --fetch
 ```
 
-### dirtyfrag 内核模块
+检查器列出新增提交和需要审查的 S23 文件。后续在临时分支合并，验证后再整合到
+`main`，具体步骤见[维护说明](docs/Home-copy-and-upstream.zh.md)。
+KernelSU 单独固定在 `snothin/KernelSU` 的
+`abbd7be7fb5e0af607c2a85e02efae03044bba86`；同步 GhostSam 不会自动升级驱动基线。
 
-该 LKM 是内核外部构建（out-of-tree kbuild）目标，需要一个准备好的内核构建
-目录；Android DDK 容器会为每个 KMI 提供一份：
+## 致谢与许可
 
-```bash
-make lkm KDIR=/path/to/kernel-build-dir
-```
+- [snothin/GhostSam](https://github.com/snothin/GhostSam)：原始应用、共享基础设施，
+  以及 Ghostlock / DirtyFrag 集成。
+- [snothin/KernelSU](https://github.com/snothin/KernelSU) 与
+  [KernelSU](https://github.com/tiann/KernelSU)：三星驱动、ksud 和管理器工作。
+  上游源码同时保留了 [KernelSU-Next](https://github.com/snothin/KernelSU-Next) 集成。
+- [ghostlock-s26](https://github.com/snothin/ghostlock-s26)、@diabl0w 的 Z Fold8 移植输入，
+  以及 [DFRoot](https://github.com/diabl0w/DFRoot)：上游利用链和公开 DirtyFrag 技术来源。
 
-### ksud 二进制
-
-国行 S23（SM-S9110 / S9110ZCS8FZI1）专用构建固定 standalone 路径，
-同步重建 UAPI 5 的 ksud 与 android13-5.15 驱动，适配官方 KernelSU
-Manager 3.3.1。构建和验证步骤见
-[S23 专用版兼容修复](docs/KernelSU-3.3.1.zh.md)。
-首页状态、独立文案及后续上游合并流程见
-[S23 首页与上游维护说明](docs/Home-copy-and-upstream.zh.md)。
-
-`payloads/ksud/ksud` 与 `payloads/ksud/ksud-next` 是预构建的 release 版本
-（aarch64-linux-android），来自我们的 KernelSU fork：
-[snothin/KernelSU](https://github.com/snothin/KernelSU) 与
-[snothin/KernelSU-Next](https://github.com/snothin/KernelSU-Next)；版本升级
-时从这两个仓库重新构建。
-
-## 使用
-
-1. 在受支持的设备上安装 APK（或按上文自行构建）。
-2. 打开 USB 调试，通过 ADB 连接。
-3. 在 App 内选择安装路径：
-   - **dirtyfrag（推荐）**：单次运行——链直接完成 KernelSU 模块的部署与
-     late-load。
-   - **Ghostlock 链**：面向所选系列的竞争性利用；运行过程中设备会重启，
-     之后由 App 执行 KernelSU late-load。
-
-## 运行期开关
-
-payload 读取少量由 App 经 ADB 注入的 `GHOSTSAM_*` 环境变量（例如
-`GHOSTSAM_NO_KSU`、`GHOSTSAM_KSU_DEFER`、`GHOSTSAM_PARAMS_STRICT`）。权威
-清单与语义以 payload 源码为准（`exploit/src/common/options.*`）；App 的 UI
-仅暴露安全子集。
-
-## 与 DFRoot 的关系
-
-[DFRoot](https://github.com/diabl0w/DFRoot)（@diabl0w）是公开 DirtyFrag 技术
-的专注、极简实现。GhostSam 把之前的工作（S22 / S26 / Z Fold8 的 Ghostlock
-利用链）集成进同一个工具集，因此整个项目更大、也更为复杂——但 dirtyfrag
-路径依然迅速：单次运行即完成部署与 late-load。欢迎体验，也欢迎提 Issue 或
-PR。
-
-两者基于同一公开技术；来源声明见 [NOTICE](NOTICE)。
-
-## 免责声明
-
-本仓库仅用于安全研究与教育，面向你拥有并控制的设备。运行 Ghostlock 链会
-重启设备，会话期间 SELinux 可能处于 permissive（Knox watchdog 可能强制
-重启）；强行指定错误的内核基线可能导致设备永久变砖。请自行对设备与当地
-法律负责。
-
-## 致谢与来源
-
-- **s26 系列**：合并自 [ghostlock-s26](https://github.com/snothin/ghostlock-s26)，
-  其 README 载有完整致谢清单。
-- **Z Fold8 移植输入（io_submit primer）**：来自 @diabl0w。
-- **ksud / ksud-next**：构建自 [snothin/KernelSU](https://github.com/snothin/KernelSU)
-  与 [snothin/KernelSU-Next](https://github.com/snothin/KernelSU-Next)；这两个
-  fork 跟踪上游并吸收 KernelSU 社区多位开发者的成果。
-- **dirtyfrag 链**：沿袭公开的 DirtyFrag 技术；来源声明见 [NOTICE](NOTICE)。
-
-## 许可
-
-Apache-2.0，见 [`LICENSE`](LICENSE)。第三方声明与致谢见 [`NOTICE`](NOTICE)。
+本项目用于你拥有并控制设备的安全研究。内核利用可能导致崩溃或重启，
+系统更新后需重新审查兼容性。许可为 [Apache-2.0](LICENSE)，
+第三方来源声明与致谢保留在 [NOTICE](NOTICE)。

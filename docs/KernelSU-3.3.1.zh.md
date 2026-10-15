@@ -1,4 +1,4 @@
-# 国行 S23 专用版：KernelSU Manager 3.3.1 兼容修复
+# GhostSam S23：KernelSU Manager 3.3.1 兼容修复
 
 本构建只面向用户提供截图中的设备与固件：
 
@@ -56,15 +56,19 @@ APK 显示名称为 **GhostSam S23**，包名为 `com.snothin.ghostsam.s23`，
 
 ## 在 fork 中构建
 
-1. 将修复文件提交到 fork 的 `codex/fix-s23-manager-r2` 分支。
-   push 会启动 **Build GhostSam S23**。也可以合并工作流后从 Actions
-   手动执行该工作流。
+1. 当前 S23 源码已合入 fork 的 `main`。从 Actions 选择
+   **Build GhostSam S23**，在 **Run workflow** 中选择 `main` 手动构建。
+   `main` 的 push 当前不触发自动构建。
 2. 工作流依次构建 Samsung KernelSU 模块、嵌入该模块的 ksud、S23 APK。
    APK 构建使用 JDK 21、SDK 37.0、NDK 30.0.16248370 和 CMake 3.22.1。
 3. 成功后下载 `ghostsam-s23-uapi5-apk` artifact，内含
    `GhostSam-S23-KernelSU-3.3.1.apk`、构建信息和 `SHA256SUMS`。
-   在解压目录执行 `sha256sum -c SHA256SUMS` 核对文件。所有检查通过后，
-   publish job 将本次产物发布为 `s23-ksu-3.3.1-r2` 测试版 Release。
+   在解压目录执行 `sha256sum -c SHA256SUMS` 核对文件。
+   `main` 的手动构建只生成 artifact；历史 publish job 仅在
+   `codex/fix-s23-manager-r2` 分支发布 `s23-ksu-3.3.1-r2` 测试版 Release。
+
+当前源码版本为 r3，包含首页状态与授权提示整理。已发布的 r2 APK 不含这些
+界面变化；截至本次文档整理，尚未构建或发布 r3 APK。
 
 APK 是标准 debug 签名的测试版本。工作流验证包名、APK 签名、两个 payload
 与本次构建输入完全一致，以及 arm64 standalone JNI 库存在。

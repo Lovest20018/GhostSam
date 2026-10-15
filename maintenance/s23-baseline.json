@@ -6,7 +6,7 @@
     "baseline": "818faef4a278353a22c3481a01a6eaedf8088a3d",
     "tracking_ref": "refs/remotes/upstream/main",
     "tracking_branch": "upstream-track",
-    "customization_branch": "s23/maintenance",
+    "customization_branch": "main",
     "source_checkpoint": "5492115",
     "known_release_tag": "s23-ksu-3.3.1-r2",
     "known_release_source": "8275603cd7f695c5ff18bfe6801bf1c1170acc30"
