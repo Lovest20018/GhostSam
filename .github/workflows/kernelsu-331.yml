@@ -3,7 +3,7 @@ name: Build GhostSam S23
 on:
   workflow_dispatch:
   push:
-    branches: [codex/fix-s23-manager-r2]
+    branches: [codex/fix-s23-manager-r2, s23/maintenance]
 
 permissions:
   contents: read
@@ -151,6 +151,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
           name: s23-payloads
@@ -218,6 +219,7 @@ jobs:
           if-no-files-found: error
 
   publish:
+    if: github.ref == 'refs/heads/codex/fix-s23-manager-r2'
     needs: apk
     runs-on: ubuntu-latest
     permissions:

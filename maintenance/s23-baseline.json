@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "ghostsam": {
+    "upstream_url": "https://github.com/snothin/GhostSam.git",
+    "default_branch": "main",
+    "baseline": "818faef4a278353a22c3481a01a6eaedf8088a3d",
+    "tracking_ref": "refs/remotes/upstream/main",
+    "tracking_branch": "upstream-track",
+    "customization_branch": "s23/maintenance",
+    "source_checkpoint": "5492115",
+    "known_release_tag": "s23-ksu-3.3.1-r2",
+    "known_release_source": "8275603cd7f695c5ff18bfe6801bf1c1170acc30"
+  },
+  "kernelsu": {
+    "repository": "snothin/KernelSU",
+    "revision": "abbd7be7fb5e0af607c2a85e02efae03044bba86",
+    "uapi": 5,
+    "manager": "3.3.1",
+    "kmi": "android13-5.15"
+  },
+  "device": {
+    "model": "SM-S9110",
+    "build": "BP4A.251205.006.S9110ZCS8FZI1",
+    "sdk": 36,
+    "kernel": "5.15.189-android13-8-3251900-abS9110ZCS8FZI1"
+  },
+  "review_prefixes": [
+    "app/app/build.gradle.kts",
+    "app/app/src/main/AndroidManifest.xml",
+    "app/app/src/main/java/com/snothin/ghostsam/ui/screen/Home",
+    "app/app/src/main/java/com/snothin/ghostsam/data/exploit/",
+    "app/app/src/main/java/com/snothin/ghostsam/data/prefs/",
+    "app/app/src/main/assets/payloads/",
+    "app/app/src/main/res/",
+    ".github/workflows/"
+  ]
+}

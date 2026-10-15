@@ -2,106 +2,134 @@
 
 整理日期：2026-10-15。
 
-本文核对 `GhostSam` 主工作目录的当前源码。最近增加的授权提示和返回首页刷新
-尚未包含在已经生成的 r2 APK 中；本文不表示已经发布新的安装包。
-比较基线为本地 `818faef`（v0.2.3），不作为线上最新提交的审计结论。
+本文描述维护分支的当前源码。源码版本为 `0.2.3-s23-uapi5-r3`（build 63），
+已经生成的 r2 APK 不包含本轮界面整理。尚未生成或发布 r3 APK。
 
-## S23 版当前实际显示
+## 当前首页
 
-S23 构建固定使用 standalone 路径和官方 KernelSU。通用代码中还存在无线调试、
-Shizuku、持久化组件、临时 socket 通道及 KernelSU-Next 状态，但不能把这些
-分支的全部文案当作 S23 版会展示的流程。
+S23 构建固定使用 standalone 路径和官方 KernelSU。首页标题为 **GhostSam S23**。
+首页状态、主卡点击动作和授权提示由同一个状态映射确定。
 
 | 条件 | 主卡标题 | 主卡说明 | 点击行为 |
 | --- | --- | --- | --- |
-| 尚未确认启用，未安装管理器 | 需要 KernelSU Manager | 执行 exploit 前请先安装 KernelSU Manager | 不启动执行 |
-| 尚未确认启用，已安装管理器 | 就绪 | 首次使用点击执行；已越狱请先检查 su 授权 | 主卡启动执行；若启用了自定义文件，先选择文件 |
-| 正在执行，尚未确认启用 | 执行中 | 竞态进行中，请保持等待… | 进入执行页面 |
-| 已确认启用，本应用 su 未验证成功 | KernelSU 已启用 | 点击打开管理器 | 打开 KernelSU；底部注明未授予本工具 su |
-| 本应用已验证 su 可用 | KernelSU 已启用 | 点击打开管理器 | 打开 KernelSU；底部注明已授予本工具 su |
+| 已安装管理器，正在检测本应用 su | 正在检查授权 | 请稍候，正在确认 KernelSU 和本应用 su 权限 | 等待检测，不启动执行 |
+| 未安装管理器 | 请先安装 KernelSU | 安装官方 KernelSU Manager 3.3.1 后返回 | 不启动执行 |
+| 未确认加载，本应用没有 su | 准备获取临时 root | 首次使用或完整重启后，点击开始 | 启动执行；启用自定义文件时先选择文件 |
+| 正在执行 | 正在获取临时 root | 请保持等待，进度见执行日志 | 进入执行页，不启动第二次执行 |
+| 已确认加载，本应用没有 su | 已加载，等待授权 | 点击打开 KSU，在“超级用户”中授权本应用 | 打开 KSU |
+| 已验证本应用 su 可用 | KernelSU 已启用 | 点击打开 KSU；可在管理器中进行软重启 | 打开 KSU |
 
-“已启用”和“本应用获得 su 授权”当前是两项独立信息。
-存在本次开机记录或其他加载证据时，未授权也可能显示“KernelSU 已启用”；
-没有这些可见证据时，未授权可能仍显示“就绪”。
+执行中状态优先于其他状态，避免模块先加载、执行尚未结束时跳到管理器。
+检测未完成前不提供执行动作，避免刚打开首页时误点。
 
-当已安装管理器、su 检测已完成但本应用没有 su，并且当前没有执行任务时，
-首页增加可点击的授权提示：
+未确认加载时，授权提示卡显示：
 
-- 状态尚不能确认时：
-  “如果 KernelSU 已显示‘已越狱’，无需再次执行。点击打开管理器，
-  在‘超级用户’中授予本工具 su 权限，再返回本应用确认状态。”
-- 已有启用或授权受限证据时：
-  “请在管理器的‘超级用户’中授予本工具 su 权限，返回后会更新状态；
-  显示‘已启用’后，可从首页打开管理器进行软重启。点击前往授权。”
+> 如果 KSU 已显示“已越狱”，无需再次执行。点击打开 KSU，在“超级用户”中
+> 授予 GhostSam S23 su 权限，再返回确认状态。
 
-授权提示卡直接打开管理器。主卡在未确认启用时仍是执行入口，两者作用不同。
-授权后返回首页会重新检测 su，并在验证成功后同步启用状态和本次开机记录。
+已确认加载、但本应用未获得 su 时，授权提示卡显示：
 
-设备信息、SELinux 状态、系统工具入口仍保留；启用自定义文件后才显示对应的
-文件配置入口。
+> KernelSU 已加载。点击打开 KSU，在“超级用户”中授予 GhostSam S23 su 权限后返回。
+> 显示“已启用”后，可从首页打开 KSU 进行软重启。
 
-## 建议下一版统一的文案
+提示卡启动管理器的首页，用户再进入“超级用户”；当前未使用未经验证的
+管理器内部页面跳转链接。
 
-以下是整理建议，尚未额外改动对应界面和状态分支：
+“已加载”的证据来自已有模块探测、本次开机记录或当前执行成功结果；
+仅凭一次 su 检测失败不能判断模块不存在。无加载证据时使用条件提示，
+不误报“已经加载”或“必须再次执行”。
 
-| 场景 | 建议标题 | 建议说明 |
-| --- | --- | --- |
-| 未安装管理器 | 请先安装 KernelSU | 安装 KernelSU Manager 3.3.1 后返回 |
-| 首次使用或完整重启后需要重新获取权限 | 准备获取临时 root | 点击开始；如果 KSU 已显示已越狱，请先检查授权 |
-| 正在执行 | 正在获取临时 root | 请保持等待，进度见执行日志 |
-| 已确认模块加载，但本应用尚未获得 su | KernelSU 已加载，等待授权 | 点击打开 KSU，在“超级用户”中授权本工具 |
-| 本应用已验证 su 可用 | KernelSU 已启用 | 点击打开 KSU；可在管理器中进行软重启 |
+授权后返回首页会重新检测 su，验证成功后同步启用状态和本次开机记录。
+设备信息、SELinux、系统工具和可选的自定义文件配置入口继续保留。
 
-其中“等待授权”只适用于已有加载证据的情况。不能仅凭一次 su 失败断言内核
-已经加载，也不能把一次授权失败直接解释为需要再次执行。
+## 文件隔离
 
-“竞态进行中”是通用界面遗留措辞，与 S23 standalone 路径不符，应改为中性的
-进度说明。安装名称为 GhostSam S23，首页标题目前仍由 `app_name=GhostSam`
-提供，后续可在 S23 资源中统一名称。
+| 用途 | 文件 |
+| --- | --- |
+| S23 状态与动作 | `app/app/src/main/java/com/snothin/ghostsam/ui/screen/s23/S23HomeState.kt` |
+| S23 主卡与授权提示 | `app/app/src/main/java/com/snothin/ghostsam/ui/screen/s23/S23HomeCard.kt` |
+| S23 英文文案 | `app/app/src/main/res/values/strings_s23.xml` |
+| S23 中文文案 | `app/app/src/main/res/values-zh-rCN/strings_s23.xml` |
+| 通用页面接入点 | `app/app/src/main/java/com/snothin/ghostsam/ui/screen/HomeScreen.kt` |
+| 通用授权返回刷新 | `app/app/src/main/java/com/snothin/ghostsam/ui/screen/HomeEvidence.kt` |
 
-## 与上游的差异
+使用独立资源名，不增加重复定义的 source set。S23 的目标不匹配说明和
+管理器版本说明也移入上述资源文件。通用首页被改动的三条授权相关文案已恢复为
+上游基线值，`HomeCards.kt` 保持上游实现。共享的模块加载日志仍在通用文案中，
+因为它与通用 standalone 结果处理对应。
 
-当前仍沿用 GhostSam 的工程结构和大部分页面，已经存在以下定制：
+## 本地分支与基线
 
-1. S23 构建标识、包名及目标机型、固件、完整内核版本检查。
-2. 固定 standalone 路径和官方 KernelSU，限制打包内容及 KMI。
-3. 指定 Samsung KernelSU 提交、UAPI 5 和经过校验的兼容补丁。
-4. 专用构建工作流、APK 内容与哈希校验。
-5. 模块加载与本应用 su 授权的区分、首页授权提示及返回刷新。
+- `origin`：用户 fork `Lovest20018/GhostSam`。
+- `upstream`：原作者仓库 `snothin/GhostSam`。
+- `upstream-track`：本地跟踪 `upstream/main`。
+- `s23/maintenance`：S23 定制维护分支。
+- 上游基线：`818faef4a278353a22c3481a01a6eaedf8088a3d`，v0.2.3。
+- 既有源码保存提交：`5492115`。本轮整理在其后单独提交。
+- 已补齐上游可用历史；2026-10-15 查询到上游 main 仍为上述基线。
 
-这些差异不意味着失去同步上游的能力。上游改到相同行时需要解决冲突，
-没有文本冲突的改动也需要检查其是否改变上述行为。
+机器可读的基线、目标设备、KernelSU 固定版本及重点审查路径保存于
+`maintenance/s23-baseline.json`。
 
-## 后续同步方式
+当前 KernelSU 继续固定为 `snothin/KernelSU` 的
+`abbd7be7fb5e0af607c2a85e02efae03044bba86`，UAPI 5、Manager 3.3.1、
+KMI `android13-5.15`。本轮不升级内核或 ksud。
 
-建议维护一条跟踪上游的分支和一条 S23 定制分支；在临时合并分支上检查更新，
-通过构建及设备验证后再更新 S23 分支。分支名称在实施时确定。
+## 后续检查与合并
 
-- 保留明确的上游基线与本地补丁提交，避免只保存一份手工覆盖后的源码。
-- 将 S23 文案放在单独资源文件，使用独立资源名或正确配置的构建变体覆盖。
-  不把定义相同资源名的两个目录直接加入同一个 source set，以免产生重复资源。
-- 将 S23 首页规则集中在一个小的状态映射入口；授权返回刷新可以保留为通用修复。
-- 合并时重点检查资源、首页状态、standalone 结果处理、构建脚本和 payload 校验。
-- GhostSam 应用和 Samsung KernelSU 是两份独立上游。应用同步时继续保留已验证的
-  KernelSU 提交，KernelSU 升级另行核对并同源重建相关产物。
-- 验证首次执行、未授权重开、授权后返回、从 GhostSam 打开 KSU、软重启、
-  完整重启后重新获取权限，以及目标信息不匹配时停止执行。
-- 保留成功版本的 APK、源码提交、构建信息与校验和，方便回退。
+在仓库根目录运行：
 
-主工作目录当前只配置了指向用户 fork 的 `origin`，尚未配置 `upstream`；
-本地是浅克隆，而且有未提交的定制改动。正式合并前需保存这些改动并取得需要的
-上游历史，不能直接用上游文件覆盖工作目录。
+```powershell
+python scripts/check-upstream.py --fetch
+```
 
-## 源码位置
+不访问网络、只检查本地已经获取的上游引用：
 
-- 首页状态及动作：`app/app/src/main/java/com/snothin/ghostsam/ui/screen/HomeScreen.kt`
-- 卡片展示：`app/app/src/main/java/com/snothin/ghostsam/ui/screen/HomeCards.kt`
-- 授权和开机状态：`app/app/src/main/java/com/snothin/ghostsam/ui/screen/HomeEvidence.kt`
-- 中文文案：`app/app/src/main/res/values-zh-rCN/strings.xml`
-- 英文文案：`app/app/src/main/res/values/strings.xml`
-- S23 配置：`app/app/build.gradle.kts`、
-  `app/app/src/main/java/com/snothin/ghostsam/data/prefs/SettingsPrefs.kt`
-- KernelSU 准备及补丁：`scripts/prepare-kernelsu.py`、`scripts/patches/`
-- 构建工作流：`.github/workflows/kernelsu-331.yml`
+```powershell
+python scripts/check-upstream.py --json
+```
 
-参考：GitHub Docs 的 “Syncing a fork” 说明了 fetch、merge 及冲突解决流程。
+检查器验证上游地址和基线祖先关系，列出新增提交及 S23 重点审查文件。
+它只生成报告，不执行合并、不改源码、不移动维护分支。报告不是兼容性验证。
+
+决定同步后，先保存工作目录，再在临时分支合并。下列临时分支名称仅作示例：
+
+```powershell
+git switch s23/maintenance
+git status --short
+git switch -c s23/merge-review
+git merge upstream/main
+```
+
+工作目录有未保存改动时先处理，不能直接覆盖。冲突解决后检查 S23 目标限制、
+首页状态和点击动作、standalone 结果处理、资源、构建脚本及 payload 校验。
+验证通过后再将维护分支快进到合并结果；不要把 S23 提交写入 `upstream-track`。
+同时将 `maintenance/s23-baseline.json` 中的 GhostSam 基线更新为已经接受的
+上游提交，再运行检查器和测试；后续报告才只包含下一批增量。
+
+应用与 Samsung KernelSU 属于两份独立上游。应用合并期间继续保留固定 KernelSU
+提交；内核升级另行核对接口并同源重建产物。
+
+## 构建与验证
+
+维护分支已加入 `Build GhostSam S23` 构建触发范围。该分支运行构建与测试，
+发布步骤只允许历史 r2 分支执行，避免维护构建覆盖已发布的 r2 资产。
+本文不代表已经推送维护分支或运行远程 CI。
+
+完整 Android 构建仍需要仓库指定的 JDK 21、SDK 37.0、NDK 30、CMake 及同源
+UAPI 5 payload。不能使用旧资产跳过检查：
+
+```powershell
+cd app
+.\gradlew.bat :app:testDebugUnitTest :app:assembleDebug -Ps23Only=true --no-daemon --no-configuration-cache
+```
+
+本轮验证包括首页状态和动作测试、S23 目标机型测试、独立资源与通用文案检查、
+APK 打包校验测试、上游检查器的隔离 Git 仓库测试，以及 Android 资源编译。
+完整 APK 构建和真机验证结果需另行记录，不能由这些检查推定成功。
+
+真机仍需覆盖：首次执行、未授权重开、授权后返回、从 GhostSam 打开 KSU、
+软重启、完整重启后重新获取权限、目标信息不匹配时停止执行。
+
+原工作目录缺失的 `app/app/src/main/assets/payloads/s26/preload.so` 是本轮之前
+已有的删除，保存基线及本轮提交均不包含该删除记录。

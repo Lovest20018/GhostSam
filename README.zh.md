@@ -125,6 +125,8 @@ make lkm KDIR=/path/to/kernel-build-dir
 同步重建 UAPI 5 的 ksud 与 android13-5.15 驱动，适配官方 KernelSU
 Manager 3.3.1。构建和验证步骤见
 [S23 专用版兼容修复](docs/KernelSU-3.3.1.zh.md)。
+首页状态、独立文案及后续上游合并流程见
+[S23 首页与上游维护说明](docs/Home-copy-and-upstream.zh.md)。
 
 `payloads/ksud/ksud` 与 `payloads/ksud/ksud-next` 是预构建的 release 版本
 （aarch64-linux-android），来自我们的 KernelSU fork：
