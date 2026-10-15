@@ -7,7 +7,7 @@ A Samsung Galaxy S23 temporary root app, adapted from
 **SM-S9110 on firmware S9110ZCS8FZI1**. This fork uses DirtyFrag standalone
 and official **KernelSU Manager 3.3.1**, with matching UAPI 5 components.
 
-[Download the r2 test APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r2)
+[Download the latest r3 test APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)
 · [S23 build details (中文)](docs/KernelSU-3.3.1.zh.md)
 · [Home states and upstream maintenance (中文)](docs/Home-copy-and-upstream.zh.md)
 
@@ -50,11 +50,16 @@ loaded driver when testing an updated build.
 | Version | Status |
 | --- | --- |
 | r2 | Previously published test APK; see the release notes for installation details |
-| r3 (`0.2.3-s23-uapi5-r3`, build 63) | Current source on `main`; includes the revised home states and authorization hints; no r3 APK has been built or published yet |
+| r3 (`0.2.3-s23-uapi5-r3`, build 63) | [Published test APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3); includes the revised home states and authorization hints; CI build and checks passed |
 
 The r3 home card distinguishes checking, manager missing, ready, running,
 loaded but awaiting su access, and enabled. These changes require a new APK;
-pushing source to GitHub does not update the installed r2 app.
+install the r3 APK from the release assets to update an installed r2 app.
+The package uses this CI run's debug signing key; see the release notes if
+Android reports a signature mismatch. The r3 APK has not been tested on the phone yet.
+
+Build source: [`14f1343`](https://github.com/Lovest20018/GhostSam/commit/14f1343521dba0b3e03d1814daf4ae8d7a065b8d)
+· [Successful Actions run](https://github.com/Lovest20018/GhostSam/actions/runs/38679062368).
 
 ## Building
 
@@ -65,8 +70,8 @@ source, then builds and verifies the S23 APK. Download the
 `ghostsam-s23-uapi5-apk` artifact from a successful run.
 
 Pushes to `main` currently do not trigger this workflow. Manual builds from
-`main` produce artifacts; the historical r2 publication step is gated to its
-original branch.
+`main` produce artifacts. The `s23-ksu-3.3.1-r3` tag triggers a complete build
+and publishes the r3 test release only after all checks pass.
 
 Local builds require JDK 21, SDK 37.0, NDK 30.0.16248370, CMake 3.22.1, and
 the matching rebuilt UAPI 5 payloads. Follow the

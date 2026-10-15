@@ -3,7 +3,10 @@
 整理日期：2026-10-15。
 
 本文描述 fork 主线 `main` 的当前源码。源码版本为 `0.2.3-s23-uapi5-r3`（build 63），
-已经生成的 r2 APK 不包含本轮界面整理。尚未生成或发布 r3 APK。
+已经生成的 r2 APK 不包含本轮界面整理。
+[r3 测试版](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)
+已由 [Actions #6](https://github.com/Lovest20018/GhostSam/actions/runs/38679062368)
+完整构建并发布，源码为 `14f1343`；r3 真机验证尚未进行。
 
 仓库中英文首页均以 **GhostSam S23** 为项目展示名，介绍 S23 的目标固件、
 授权流程和构建方式；应用显示名和首页标题也使用此名称。
@@ -117,10 +120,11 @@ git merge upstream/main
 
 ## 构建与验证
 
-维护分支已加入 `Build GhostSam S23` 构建触发范围。该分支运行构建与测试，
-发布步骤只允许历史 r2 分支执行，避免维护构建覆盖已发布的 r2 资产。
+维护分支已加入 `Build GhostSam S23` 构建触发范围。该分支运行构建与测试。
+`s23-ksu-3.3.1-r3` 标签会触发完整构建，发布步骤只对这个标签开放，
+并核对源码提交、APK 版本、三个附件及其 SHA256，不覆盖旧 r2。
 当前 `main` 不在 push 自动构建范围内，可从 Actions 手动选择 `main` 运行，
-成功后下载 artifact。合并推送源码不代表已经运行 CI 或生成 r3 APK。
+成功后下载 artifact。r3 的上述标签构建已通过并发布，普通主线推送仍不会启动构建。
 
 完整 Android 构建仍需要仓库指定的 JDK 21、SDK 37.0、NDK 30、CMake 及同源
 UAPI 5 payload。不能使用旧资产跳过检查：

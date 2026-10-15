@@ -8,8 +8,8 @@
     "tracking_branch": "upstream-track",
     "customization_branch": "main",
     "source_checkpoint": "5492115",
-    "known_release_tag": "s23-ksu-3.3.1-r2",
-    "known_release_source": "8275603cd7f695c5ff18bfe6801bf1c1170acc30"
+    "known_release_tag": "s23-ksu-3.3.1-r3",
+    "known_release_source": "14f1343521dba0b3e03d1814daf4ae8d7a065b8d"
   },
   "kernelsu": {
     "repository": "snothin/KernelSU",

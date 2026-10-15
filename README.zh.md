@@ -7,7 +7,7 @@
 本 fork 固定使用 DirtyFrag standalone 路径与官方 **KernelSU Manager 3.3.1**，
 配套构建 UAPI 5 驱动和 ksud。
 
-[下载 r2 测试版 APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r2)
+[下载最新 r3 测试版 APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)
 · [S23 构建与兼容说明](docs/KernelSU-3.3.1.zh.md)
 · [应用首页与上游维护说明](docs/Home-copy-and-upstream.zh.md)
 
@@ -47,10 +47,15 @@
 | 版本 | 状态 |
 | --- | --- |
 | r2 | 已发布的测试版 APK，安装注意事项见对应 Release |
-| r3（`0.2.3-s23-uapi5-r3`，build 63） | 当前 `main` 源码，包含新的首页状态和授权提示；尚未构建或发布 r3 APK |
+| r3（`0.2.3-s23-uapi5-r3`，build 63） | [已发布测试版 APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)，包含新的首页状态和授权提示；CI 构建与检查已通过 |
 
 r3 首页区分正在检测、管理器未安装、准备执行、执行中、已加载待授权、已启用。
-这些界面改动需要安装新构建才能看到；GitHub 源码更新不会自动更新手机上的 r2。
+请下载 Release 附件中的 r3 APK 更新手机上的 r2。
+本版使用本次 CI 的 debug 签名，若提示签名冲突，按 Release 安装说明处理。
+r3 APK 尚未进行真机验证。
+
+构建源码：[`14f1343`](https://github.com/Lovest20018/GhostSam/commit/14f1343521dba0b3e03d1814daf4ae8d7a065b8d)
+· [已通过的 Actions 构建](https://github.com/Lovest20018/GhostSam/actions/runs/38679062368)。
 
 ## 构建
 
@@ -60,7 +65,7 @@ r3 首页区分正在检测、管理器未安装、准备执行、执行中、�
 成功后下载该次运行的 `ghostsam-s23-uapi5-apk` artifact。
 
 当前推送 `main` 不会自动启动该工作流。手动构建 `main` 会产出 artifact；
-历史 r2 的 Release 发布步骤只对原分支开放。
+推送 `s23-ksu-3.3.1-r3` 标签会完整构建，并在全部检查通过后发布 r3 测试版。
 
 本地构建需要 JDK 21、SDK 37.0、NDK 30.0.16248370、CMake 3.22.1，
 以及同源重建的 UAPI 5 payload。先按[构建说明](docs/KernelSU-3.3.1.zh.md)
