@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [codex/fix-s23-manager-r2, s23/maintenance]
+    tags: [s23-ksu-3.3.1-r3]
 
 permissions:
   contents: read
@@ -186,6 +187,8 @@ jobs:
             --ksud s23-payloads/ksud/ksud \
             --dfr-module "app/app/src/main/assets/payloads/dirtyfrag/dfr_lkm-${S23_KMI}.ko"
           test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest application-id "$apk")" = com.snothin.ghostsam.s23
+          test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$apk")" = 0.2.3-s23-uapi5-r3
+          test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-code "$apk")" = 63
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
       - name: Package the verified APK and build information
         run: |
@@ -193,6 +196,8 @@ jobs:
           cp app/app/build/outputs/apk/debug/app-debug.apk out/GhostSam-S23-KernelSU-3.3.1.apk
           cat > out/BUILD-INFO.txt <<EOF
           application_id=com.snothin.ghostsam.s23
+          version_name=0.2.3-s23-uapi5-r3
+          version_code=63
           ghostsam_revision=$GITHUB_SHA
           kernelsu_repository=$KERNELSU_REPOSITORY
           kernelsu_revision=$KERNELSU_REVISION
@@ -219,7 +224,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    if: github.ref == 'refs/heads/codex/fix-s23-manager-r2'
+    if: github.repository == 'Lovest20018/GhostSam' && github.ref == 'refs/tags/s23-ksu-3.3.1-r3'
     needs: apk
     runs-on: ubuntu-latest
     permissions:
@@ -227,8 +232,11 @@ jobs:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: s23-ksu-3.3.1-r2
+      RELEASE_TAG: s23-ksu-3.3.1-r3
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
           name: ghostsam-s23-uapi5-apk
@@ -236,6 +244,7 @@ jobs:
       - name: Verify and publish the S23 manager compatibility test build
         run: |
           test "$GITHUB_REPOSITORY" = Lovest20018/GhostSam
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')" = "$GITHUB_SHA"
           (cd out && sha256sum -c SHA256SUMS)
           python3 - <<'PY'
           from pathlib import Path
@@ -245,39 +254,18 @@ jobs:
           assert {p.name for p in assets.iterdir()} == {"GhostSam-S23-KernelSU-3.3.1.apk", "BUILD-INFO.txt", "SHA256SUMS"}
           info = (assets / "BUILD-INFO.txt").read_text()
           assert f'ghostsam_revision={os.environ["GITHUB_SHA"]}' in info
+          assert "version_name=0.2.3-s23-uapi5-r3" in info
+          assert "version_code=63" in info
           assert "samsung_compat=KDP,DEFEX,RKP" in info
           assert "manager_observer=upstream-3.3.1-task_work-backport" in info
           PY
-          cat > RELEASE-NOTES.md <<'NOTES'
-          国行 Galaxy S23 专用第二版测试构建，针对模块加载后官方 KernelSU Manager 3.3.1 仍显示“未安装”的反馈。
-
-          适用设备：**SM-S9110 / S9110ZCS8FZI1 / One UI 8.5 / Android 16**。
-          完整内核：`5.15.189-android13-8-3251900-abS9110ZCS8FZI1`，KMI `android13-5.15`。
-
-          本版改动：
-
-          - 保留 UAPI 5、三星 KDP/DEFEX，并启用 Samsung RKP 兼容分支。当 syscall dispatcher 不可用时，包含管理器 FD 注入及 sucompat 的已有 kprobe 备用路径。构建检查备用路径确实编入模块。
-          - 回移官方 3.3.1 的安装监听 task_work 修复，避开 fsnotify/rename 持锁范围，在安装操作返回前完成管理器身份扫描。
-          - 区分模块加载成功和本应用实测 `su uid=0`；模块存在不再打印“uid=0 验证通过”，也不写 root 成功记录。修正日志中旧的 3.3.0 标签和 S23 未匹配提示。
-          - 保留“自动软重启”用户设置，并明确记录该选项。
-
-          安装与验证：
-
-          1. 保留已安装的**官方 KernelSU Manager 3.3.1**，下载附件 APK。应用包名仍为 `com.snothin.ghostsam.s23`，版本为 `0.2.3-s23-uapi5-r2`（build 62）。
-          2. APK 使用本次 CI 生成的 debug 签名。若系统提示签名冲突，请卸载旧 **GhostSam S23** 后安装；卸载会清除该应用的设置和历史，先保存所需日志。
-          3. 排查时关闭“设置 → 更多设置 → 自动软重启”，**完整重启手机**后运行 GhostSam S23。完整重启会清除先前加载的驱动，不能用软重启代替。
-          4. 流程结束后打开 KernelSU，检查是否识别驱动和管理器身份；随后授权 GhostSam S23，再验证实际 root。若仍未识别，保存本次完整运行日志及管理器截图。
-
-          **本版已通过 CI 构建、单元测试、APK 载荷和签名检查，尚未通过目标手机真机验证。** RKP 备用路径是否成功注册、管理器是否被识别，仍需该设备确认。用户反馈的首次版本只证明模块存在，没有独立证明应用 `uid=0`。
-
-          附件包含 APK、`SHA256SUMS`、`BUILD-INFO.txt`。
-          NOTES
+          cp docs/releases/s23-ksu-3.3.1-r3.zh.md RELEASE-NOTES.md
           printf '\n构建来源：https://github.com/%s/actions/runs/%s\n源码提交：`%s`\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$GITHUB_SHA" >> RELEASE-NOTES.md
           release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id")
           if [ -z "$release_id" ]; then
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-              --target "$GITHUB_SHA" --draft --prerelease \
-              --title 'GhostSam S23 · KernelSU 3.3.1 r2（管理器识别测试版）' \
+              --target "$GITHUB_SHA" --verify-tag --draft --prerelease \
+              --title 'GhostSam S23 r3 · 首页状态与授权提示更新' \
               --notes-file RELEASE-NOTES.md \
               out/GhostSam-S23-KernelSU-3.3.1.apk out/BUILD-INFO.txt out/SHA256SUMS
             release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id")
@@ -313,5 +301,5 @@ jobs:
           release = json.load(open("release.json"))
           assert release["tag_name"] == os.environ["RELEASE_TAG"]
           assert not release["draft"] and release["prerelease"]
-          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(f'Published [S23 r2]({release["html_url"]}) with three verified assets.\n')
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(f'Published [S23 r3]({release["html_url"]}) with three verified assets.\n')
           PY
