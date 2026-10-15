@@ -1,0 +1,92 @@
+name: Publish verified GhostSam S23 r2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/publish-s23-r2]
+    paths: [.github/workflows/publish-s23-r2.yml]
+
+permissions:
+  actions: read
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  BUILD_RUN_ID: '38559955044'
+  BUILD_SOURCE_SHA: 8275603cd7f695c5ff18bfe6801bf1c1170acc30
+  RELEASE_TAG: s23-ksu-3.3.1-r2
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify the source and all three build jobs
+        run: |
+          test "$GITHUB_REPOSITORY" = Lovest20018/GhostSam
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID" > build-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$BUILD_RUN_ID/jobs?per_page=100" > build-jobs.json
+          python3 - <<'PY'
+          import json
+          import os
+
+          run = json.load(open("build-run.json"))
+          assert run["head_sha"] == os.environ["BUILD_SOURCE_SHA"]
+          assert run["name"] == "Build GhostSam S23"
+          assert run["status"] == "completed"
+          jobs = {j["name"]: j for j in json.load(open("build-jobs.json"))["jobs"]}
+          for name in ("kernel-modules", "ksud", "apk"):
+              assert jobs[name]["status"] == "completed" and jobs[name]["conclusion"] == "success", name
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          name: ghostsam-s23-uapi5-apk
+          path: out
+          run-id: ${{ env.BUILD_RUN_ID }}
+          repository: ${{ github.repository }}
+          github-token: ${{ github.token }}
+      - name: Verify the existing draft and publish its exact build assets
+        run: |
+          (cd out && sha256sum -c SHA256SUMS)
+          release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id")
+          test -n "$release_id"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" > release.json
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+
+          release = json.load(open("release.json"))
+          assert release["tag_name"] == os.environ["RELEASE_TAG"] and release["prerelease"]
+          assert release["target_commitish"] == os.environ["BUILD_SOURCE_SHA"]
+          expected = {p.name: p for p in Path("out").iterdir()}
+          assert set(expected) == {"GhostSam-S23-KernelSU-3.3.1.apk", "BUILD-INFO.txt", "SHA256SUMS"}
+          info = expected["BUILD-INFO.txt"].read_text()
+          assert f'ghostsam_revision={os.environ["BUILD_SOURCE_SHA"]}' in info
+          assert "samsung_compat=KDP,DEFEX,RKP" in info
+          assert "manager_observer=upstream-3.3.1-task_work-backport" in info
+          assets = {a["name"]: a for a in release["assets"]}
+          assert set(assets) == set(expected)
+          for name, path in expected.items():
+              asset = assets[name]
+              digest = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
+              assert asset["state"] == "uploaded" and asset["size"] == path.stat().st_size
+              assert asset["digest"] == digest
+              print(name, digest)
+          PY
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" -F draft=false > release.json
+          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')" = "$BUILD_SOURCE_SHA"
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import os
+
+          release = json.load(open("release.json"))
+          assert release["tag_name"] == os.environ["RELEASE_TAG"]
+          assert not release["draft"] and release["prerelease"]
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(f'Published [S23 r2]({release["html_url"]}) after verifying the original build and all three asset digests.\n')
+          PY

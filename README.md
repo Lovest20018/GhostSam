@@ -134,6 +134,11 @@ make lkm KDIR=/path/to/kernel-build-dir
 
 ### ksud binaries
 
+The dedicated China S23 build (SM-S9110 / S9110ZCS8FZI1) uses standalone mode
+and rebuilds ksud plus the android13-5.15 driver with UAPI 5 for official
+KernelSU Manager 3.3.1. See the
+[S23 build and validation instructions (Chinese)](docs/KernelSU-3.3.1.zh.md).
+
 `payloads/ksud/ksud` and `payloads/ksud/ksud-next` are prebuilt release
 builds (aarch64-linux-android) from our KernelSU forks,
 [snothin/KernelSU](https://github.com/snothin/KernelSU) and

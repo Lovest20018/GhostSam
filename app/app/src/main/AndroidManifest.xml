@@ -27,7 +27,7 @@
           </intent>
      </queries>
 
-     <application android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:icon="@mipmap/ic_launcher" android:label="@string/app_name" android:localeConfig="@xml/locales_config" android:roundIcon="@mipmap/ic_launcher_round" android:supportsRtl="true" android:theme="@style/Theme.GhostSam">
+     <application android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:icon="@mipmap/ic_launcher" android:label="${appLabel}" android:localeConfig="@xml/locales_config" android:roundIcon="@mipmap/ic_launcher_round" android:supportsRtl="true" android:theme="@style/Theme.GhostSam">
 
           <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
                <intent-filter>

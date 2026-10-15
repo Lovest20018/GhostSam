@@ -54,6 +54,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snothin.ghostsam.R
+import com.snothin.ghostsam.BuildConfig
 import com.snothin.ghostsam.data.channel.AdbController
 import com.snothin.ghostsam.data.channel.ExecutionMode
 import com.snothin.ghostsam.data.channel.ExploitChannel
@@ -312,7 +313,7 @@ private fun SettingsMain(
         )
     }
 
-    SettingsCompanionDialogs(companionSection)
+    if (!BuildConfig.S23_ONLY) SettingsCompanionDialogs(companionSection)
 }
 
 private fun LazyListScope.ThemeBlock(onOpen: () -> Unit) {
@@ -387,6 +388,7 @@ private fun LazyListScope.SchemeBlock(
                         state.schemeStatus = ""
                     }
                 },
+                enabled = !BuildConfig.S23_ONLY,
             )
             if (state.ksudVariantStatus.isNotEmpty()) {
                 Text(
@@ -406,7 +408,10 @@ private fun LazyListScope.SchemeBlock(
                     },
                 ),
                 items = listOf(
-                    stringResource(R.string.settings_ksud_variant_default),
+                    stringResource(
+                        if (BuildConfig.S23_ONLY) R.string.settings_ksud_variant_s23
+                        else R.string.settings_ksud_variant_default,
+                    ),
                     stringResource(R.string.settings_ksud_variant_next),
                 ),
                 startAction = {
@@ -436,7 +441,7 @@ private fun LazyListScope.SchemeBlock(
                         }
                     }
                 },
-                enabled = standaloneRoute && !state.kernelActivated,
+                enabled = !BuildConfig.S23_ONLY && standaloneRoute && !state.kernelActivated,
             )
             if (state.payloadScheme != PayloadScheme.Default) {
                 if (state.pinStatus.isNotEmpty()) {
@@ -484,7 +489,7 @@ private fun LazyListScope.SchemeBlock(
                     },
                 )
             }
-            SettingsCompanionSection(companionSection, state.payloadScheme)
+            if (!BuildConfig.S23_ONLY) SettingsCompanionSection(companionSection, state.payloadScheme)
         }
     }
 }

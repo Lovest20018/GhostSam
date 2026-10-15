@@ -12,7 +12,7 @@
     <string name="home_status_manager_missing">需要 %1$s Manager</string>
     <string name="home_status_manager_missing_detail">执行 exploit 前请先安装 %1$s Manager</string>
     <string name="home_status_su_denied">未授予本工具 su 权限</string>
-    <string name="home_status_su_denied_detail">打开管理器授权（用于 SELinux 切换、系统工具）</string>
+    <string name="home_status_su_denied_detail">点击打开管理器，在“超级用户”中授权后返回</string>
     <string name="home_status_ksu_enabled">%1$s 已启用</string>
     <string name="home_status_ksu_enabled_detail">点击打开管理器</string>
     <string name="home_status_noksu_enabled">临时 root 通道</string>
@@ -20,7 +20,7 @@
     <string name="home_status_persist">持久化已就绪</string>
     <string name="home_status_persist_detail">服务组件已就位 · 点击激活</string>
     <string name="home_status_standalone">就绪</string>
-    <string name="home_status_standalone_detail">点击执行以获取临时 root 权限</string>
+    <string name="home_status_standalone_detail">首次使用点击执行；已越狱请先检查 su 授权</string>
     <string name="home_status_next_spoofed_hint">spoofed 管理器需按签名扫描识别，首次检出稍慢</string>
     <string name="persist_run_ok">链路已执行</string>
     <string name="persist_run_toast">持久化链路：%1$s</string>
@@ -94,7 +94,8 @@
     <string name="selinux_toggle_failed">SELinux 切换失败</string>
     <string name="ksud_load_card_title">加载 ksud</string>
     <string name="su_denied_connect_hint">未授予本工具 su，可改用无线调试/Shizuku 通道</string>
-    <string name="su_denied_hint_standalone">未授予本工具 su，可在 KernelSU 授权</string>
+    <string name="su_denied_hint_standalone">请在管理器的“超级用户”中授予本工具 su 权限，返回后会更新状态；显示“已启用”后，可从首页打开管理器进行软重启。点击前往授权。</string>
+    <string name="su_auth_check_hint">如果 KernelSU 已显示“已越狱”，无需再次执行。点击打开管理器，在“超级用户”中授予本工具 su 权限，再返回本应用确认状态。</string>
     <string name="ksud_load_card_detail">将临时通道升级为 KernelSU（permissive 会话中可用）</string>
     <string name="ksud_load_title">加载 ksud</string>
     <string name="ksud_load_summary">选择 ksud 来源后执行 late-load 升级</string>
@@ -183,6 +184,7 @@
     <string name="settings_scheme_dfr">GhostLock · DirtyFrag</string>
     <string name="settings_scheme_standalone">DirtyFrag</string>
     <string name="settings_ksud_variant">KernelSU 版本</string>
+    <string name="settings_ksud_variant_s23">KernelSU（管理器 3.3.1 · UAPI 5）</string>
     <string name="settings_ksud_variant_default">KernelSU（3.3.0 · 32601）</string>
     <string name="settings_ksud_variant_next">KernelSU-Next（3.4.0 · 33294）</string>
     <string name="settings_ksud_variant_summary">下次执行生效，更换内核需重启</string>
@@ -470,6 +472,7 @@
     <string name="exploit_log_fail_verify">KernelSU 验证超时（模块未加载或 su 无应答）</string>
     <string name="exploit_log_verify_wait">验证中：模块未加载 / su 不可用（%1$ds）</string>
     <string name="exploit_log_verified">KernelSU 验证通过（uid=0）</string>
+    <string name="exploit_log_module_loaded_su_unverified">KernelSU 模块已加载；尚未验证本应用获得 uid=0，管理器身份也未验证。</string>
     <string name="exploit_log_verified_noksu">临时 root 通道验证通过（permissive 会话）</string>
     <string name="exploit_log_noksu_hint">第三方终端（Termux 等）可用 /data/local/tmp/cve-2026-43499-root（-c 单条 / 无参交互）</string>
     <string name="exploit_log_completed">完成，耗时 %1$.1fs · exit 0</string>
@@ -555,4 +558,5 @@
     <string name="terminal_title">终端</string>
     <string name="terminal_banner">GhostSam 终端\n后端：su / 无线调试 / Shizuku\n\n</string>
     <string name="terminal_failed">[错误] 无法启动 Shell(无可用通道)\n</string>
+    <string name="s23_target_mismatch">此 S23 专用版仅支持 SM-S9110、固件 S9110ZCS8FZI1、Android 16、内核 5.15.189-android13-8-3251900-abS9110ZCS8FZI1。当前设备信息不匹配。</string>
 </resources>

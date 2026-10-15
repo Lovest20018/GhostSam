@@ -76,6 +76,13 @@ internal class HomeEvidence internal constructor(
             }
         }
         suProbeDone = true
+        if (suAvailable) {
+            ksuActive = true
+            moduleActive = true
+            noksuSession = false
+            suDenied = false
+            confirmActive()
+        }
     }
 
     suspend fun refreshManager() {

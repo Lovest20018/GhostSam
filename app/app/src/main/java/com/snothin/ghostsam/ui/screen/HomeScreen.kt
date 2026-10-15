@@ -445,17 +445,20 @@ private fun HomeMiuix(
 
             val standaloneRoute = payloadScheme == PayloadScheme.DfrStandalone
             val suDeniedConnectVisible =
-                ksuActive && !tempChannelActive && !suAvailable && !channelConnected &&
-                    suProbeDone
+                !tempChannelActive && !suAvailable && suProbeDone && !exploiting &&
+                    (managerInstalled || (ksuActive && !channelConnected))
             if (suDeniedConnectVisible) {
                 item {
                     SuDeniedConnectCard(
-                        onClick = { if (!standaloneRoute) connectChannel() },
-                        showAction = !standaloneRoute,
-                        hintRes = if (standaloneRoute) {
-                            R.string.su_denied_hint_standalone
-                        } else {
-                            R.string.su_denied_connect_hint
+                        onClick = {
+                            if (managerInstalled) openKernelSUManager(context)
+                            else if (!standaloneRoute) connectChannel()
+                        },
+                        showAction = managerInstalled || !standaloneRoute,
+                        hintRes = when {
+                            managerInstalled && !ksuActive && !suDenied -> R.string.su_auth_check_hint
+                            managerInstalled || standaloneRoute -> R.string.su_denied_hint_standalone
+                            else -> R.string.su_denied_connect_hint
                         },
                     )
                 }

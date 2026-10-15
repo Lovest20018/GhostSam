@@ -2,6 +2,7 @@ package com.snothin.ghostsam.data.prefs
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.snothin.ghostsam.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.snothin.ghostsam.data.channel.ExecutionMode
 import com.snothin.ghostsam.data.exploit.PayloadScheme
@@ -28,7 +29,9 @@ object SettingsPrefs {
 
     val tcpPersistFlow = MutableStateFlow(false)
 
-    val payloadSchemeFlow = MutableStateFlow(PayloadScheme.Default)
+    val payloadSchemeFlow = MutableStateFlow(
+        if (BuildConfig.S23_ONLY) PayloadScheme.DfrStandalone else PayloadScheme.Default,
+    )
 
     val ksudVariantFlow = MutableStateFlow(KsudVariant.Default)
 
@@ -70,17 +73,21 @@ object SettingsPrefs {
     }
 
     fun payloadScheme(context: Context): PayloadScheme =
-        PayloadScheme.parse(prefs(context).getString(PAYLOAD_SCHEME, null))
+        if (BuildConfig.S23_ONLY) PayloadScheme.DfrStandalone
+        else PayloadScheme.parse(prefs(context).getString(PAYLOAD_SCHEME, null))
 
     fun setPayloadScheme(context: Context, value: PayloadScheme) {
+        if (BuildConfig.S23_ONLY) return
         prefs(context).edit().putString(PAYLOAD_SCHEME, value.name).apply()
         payloadSchemeFlow.value = value
     }
 
     fun ksudVariant(context: Context): KsudVariant =
-        KsudVariant.parse(prefs(context).getString(KSUD_VARIANT, null))
+        if (BuildConfig.S23_ONLY) KsudVariant.Default
+        else KsudVariant.parse(prefs(context).getString(KSUD_VARIANT, null))
 
     fun setKsudVariant(context: Context, value: KsudVariant) {
+        if (BuildConfig.S23_ONLY) return
         prefs(context).edit().putString(KSUD_VARIANT, value.name).apply()
         ksudVariantFlow.value = value
     }
