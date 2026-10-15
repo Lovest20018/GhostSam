@@ -12,7 +12,7 @@
     <string name="home_status_manager_missing">%1$s Manager required</string>
     <string name="home_status_manager_missing_detail">Install %1$s Manager before running the exploit</string>
     <string name="home_status_su_denied">su not granted to this app</string>
-    <string name="home_status_su_denied_detail">Tap to open the manager, grant su under Superuser, then return</string>
+    <string name="home_status_su_denied_detail">Open the manager to grant su (for SELinux toggle, system tools)</string>
     <string name="home_status_ksu_enabled">%1$s enabled</string>
     <string name="home_status_ksu_enabled_detail">Tap to open manager</string>
     <string name="home_status_noksu_enabled">Temporary root channel</string>
@@ -20,7 +20,7 @@
     <string name="home_status_persist">Persistence ready</string>
     <string name="home_status_persist_detail">Service component in place · tap to activate</string>
     <string name="home_status_standalone">Ready</string>
-    <string name="home_status_standalone_detail">First use: tap to run. Already rooted? Check the su grant first.</string>
+    <string name="home_status_standalone_detail">Tap to execute for temporary root</string>
     <string name="home_status_next_spoofed_hint">Spoofed manager is found by signature scan (first check may be slower)</string>
     <string name="persist_run_ok">Chain executed</string>
     <string name="persist_run_toast">Persistence chain: %1$s</string>
@@ -95,8 +95,7 @@
     <string name="selinux_toggle_failed">Failed to toggle SELinux</string>
     <string name="ksud_load_card_title">Load ksud</string>
     <string name="su_denied_connect_hint">su not granted to this app — use the wireless debugging/Shizuku channel instead</string>
-    <string name="su_denied_hint_standalone">Grant this app su access under Superuser in the manager, then return to refresh the status. Once enabled, open the manager from Home to use soft reboot. Tap to grant access.</string>
-    <string name="su_auth_check_hint">If KernelSU already shows Jailbroken, there is no need to run again. Tap to open the manager, grant this app su access under Superuser, then return to check the status.</string>
+    <string name="su_denied_hint_standalone">su not granted to this app — authorize in KernelSU</string>
     <string name="ksud_load_card_detail">Upgrade the temp channel to KernelSU (works in permissive session)</string>
     <string name="ksud_load_title">Load ksud</string>
     <string name="ksud_load_summary">Pick a ksud source, then run the late-load upgrade</string>
@@ -185,7 +184,6 @@
     <string name="settings_scheme_dfr">GhostLock · DirtyFrag</string>
     <string name="settings_scheme_standalone">DirtyFrag</string>
     <string name="settings_ksud_variant">KernelSU version</string>
-    <string name="settings_ksud_variant_s23">KernelSU (Manager 3.3.1 · UAPI 5)</string>
     <string name="settings_ksud_variant_default">KernelSU (3.3.0 · 32601)</string>
     <string name="settings_ksud_variant_next">KernelSU-Next (3.4.0 · 33294)</string>
     <string name="settings_ksud_variant_summary">Takes effect on the next run, reboot to replace the kernel</string>
@@ -558,5 +556,4 @@
     <string name="terminal_title">Terminal</string>
     <string name="terminal_banner">GhostSam Terminal\nBackend: su / wireless debug / Shizuku\n\n</string>
     <string name="terminal_failed">[error] Failed to spawn shell (no channel available)\n</string>
-    <string name="s23_target_mismatch">This S23 edition supports only SM-S9110 / S9110ZCS8FZI1 / Android 16 / kernel 5.15.189-android13-8-3251900-abS9110ZCS8FZI1. Device information does not match.</string>
 </resources>

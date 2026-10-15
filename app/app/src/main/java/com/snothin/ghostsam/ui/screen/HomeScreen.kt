@@ -60,6 +60,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.snothin.ghostsam.BuildConfig
 import com.snothin.ghostsam.R
 import com.snothin.ghostsam.data.channel.AdbController
 import com.snothin.ghostsam.data.channel.AdbPairService
@@ -82,6 +83,10 @@ import com.snothin.ghostsam.data.channel.ShizukuController
 import com.snothin.ghostsam.ui.component.rememberShizukuConnection
 import com.snothin.ghostsam.ui.navigation3.LocalNavigator
 import com.snothin.ghostsam.ui.navigation3.Route
+import com.snothin.ghostsam.ui.screen.s23.S23HomeAction
+import com.snothin.ghostsam.ui.screen.s23.S23HomeAuthorizationHint
+import com.snothin.ghostsam.ui.screen.s23.S23HomeStatusCard
+import com.snothin.ghostsam.ui.screen.s23.resolveS23HomeState
 import com.snothin.ghostsam.ui.theme.NatsumeGray
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
@@ -241,6 +246,17 @@ private fun HomeMiuix(
     // activation drives the chain (no wireless debugging); active keeps "open Manager".
     val persistReady = payloadScheme == PayloadScheme.Dfr && companionState.installed
     val standaloneReady = payloadScheme == PayloadScheme.DfrStandalone && !ksuActive
+    val s23HomeState = if (BuildConfig.S23_ONLY) {
+        resolveS23HomeState(
+            running = exploiting,
+            managerInstalled = managerInstalled,
+            suProbeDone = suProbeDone,
+            suAvailable = suAvailable,
+            kernelLoaded = ksuActive || moduleActive || exploitPhase == ExploitPhase.Succeeded,
+        )
+    } else {
+        null
+    }
 
     val persistHostLine = if (persistReady) {
         persistHost?.let {
@@ -326,6 +342,22 @@ private fun HomeMiuix(
     }
 
     fun onStatusCardClick() {
+        if (s23HomeState != null) {
+            when (s23HomeState.action) {
+                S23HomeAction.None -> Unit
+                S23HomeAction.OpenManager -> openKernelSUManager(context)
+                S23HomeAction.ShowProgress -> navigator.push(Route.Exploit)
+                S23HomeAction.Run -> {
+                    if (payloadEnabled) {
+                        showPayloadPicker = true
+                    } else {
+                        navigator.push(Route.Exploit)
+                        exploitViewModel.start()
+                    }
+                }
+            }
+            return
+        }
     if (persistReady && !ksuActive) {
         navigator.push(Route.Exploit)
         exploitViewModel.startPersist()
@@ -371,14 +403,15 @@ private fun HomeMiuix(
     }
     }
 
+    val homeTitle = stringResource(if (BuildConfig.S23_ONLY) R.string.s23_app_name else R.string.app_name)
     top.yukonga.miuix.kmp.basic.Scaffold(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout)
             .only(WindowInsetsSides.Horizontal),
         topBar = {
             top.yukonga.miuix.kmp.basic.TopAppBar(
-                title = stringResource(R.string.app_name),
-                largeTitle = stringResource(R.string.app_name),
+                title = homeTitle,
+                largeTitle = homeTitle,
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -406,6 +439,14 @@ private fun HomeMiuix(
                 else -> SummonStatus.Disconnected
             }
             item {
+                if (s23HomeState != null) {
+                    S23HomeStatusCard(
+                        state = s23HomeState,
+                        rootInfo = rootInfo,
+                        onClick = { onStatusCardClick() },
+                    )
+                    return@item
+                }
                 SummonStatusCard(
                     status = status,
                     ksuActive = ksuActive,
@@ -445,20 +486,24 @@ private fun HomeMiuix(
 
             val standaloneRoute = payloadScheme == PayloadScheme.DfrStandalone
             val suDeniedConnectVisible =
-                !tempChannelActive && !suAvailable && suProbeDone && !exploiting &&
-                    (managerInstalled || (ksuActive && !channelConnected))
-            if (suDeniedConnectVisible) {
+                ksuActive && !tempChannelActive && !suAvailable && !channelConnected &&
+                    suProbeDone
+            if (s23HomeState?.showAuthorizationHint == true) {
+                item {
+                    S23HomeAuthorizationHint(
+                        state = s23HomeState,
+                        onOpenManager = { openKernelSUManager(context) },
+                    )
+                }
+            } else if (s23HomeState == null && suDeniedConnectVisible) {
                 item {
                     SuDeniedConnectCard(
-                        onClick = {
-                            if (managerInstalled) openKernelSUManager(context)
-                            else if (!standaloneRoute) connectChannel()
-                        },
-                        showAction = managerInstalled || !standaloneRoute,
-                        hintRes = when {
-                            managerInstalled && !ksuActive && !suDenied -> R.string.su_auth_check_hint
-                            managerInstalled || standaloneRoute -> R.string.su_denied_hint_standalone
-                            else -> R.string.su_denied_connect_hint
+                        onClick = { if (!standaloneRoute) connectChannel() },
+                        showAction = !standaloneRoute,
+                        hintRes = if (standaloneRoute) {
+                            R.string.su_denied_hint_standalone
+                        } else {
+                            R.string.su_denied_connect_hint
                         },
                     )
                 }

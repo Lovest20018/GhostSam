@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="s23_app_name">GhostSam S23</string>
+    <string name="s23_home_checking">Checking authorization</string>
+    <string name="s23_home_checking_detail">Please wait while KernelSU and this app’s su access are checked</string>
+    <string name="s23_home_manager_missing">Install KernelSU first</string>
+    <string name="s23_home_manager_missing_detail">Install official KernelSU Manager 3.3.1, then return</string>
+    <string name="s23_home_ready">Ready for temporary root</string>
+    <string name="s23_home_ready_detail">Tap to start on first use or after a full reboot</string>
+    <string name="s23_home_working">Acquiring temporary root</string>
+    <string name="s23_home_working_detail">Please wait. Progress is available in the run log.</string>
+    <string name="s23_home_awaiting_grant">Loaded, awaiting su access</string>
+    <string name="s23_home_awaiting_grant_detail">Tap to open KSU and grant this app access under Superuser</string>
+    <string name="s23_home_enabled">KernelSU enabled</string>
+    <string name="s23_home_enabled_detail">Tap to open KSU, where you can perform a soft reboot</string>
+    <string name="s23_home_check_grant_hint">If KSU already shows Jailbroken, there is no need to run again. Tap to open KSU, grant GhostSam S23 su access under Superuser, then return to check the status.</string>
+    <string name="s23_home_grant_hint">KernelSU is loaded. Tap to grant GhostSam S23 su access under Superuser in KSU, then return. Once enabled, open KSU from Home to use soft reboot.</string>
+    <string name="settings_ksud_variant_s23">KernelSU (Manager 3.3.1 · UAPI 5)</string>
+    <string name="s23_target_mismatch">This S23 edition supports only SM-S9110 / S9110ZCS8FZI1 / Android 16 / kernel 5.15.189-android13-8-3251900-abS9110ZCS8FZI1. Device information does not match.</string>
+</resources>

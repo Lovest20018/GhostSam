@@ -43,8 +43,8 @@ android {
         if (s23Only) applicationId = "com.snothin.ghostsam.s23"
         minSdk = 33
         targetSdk = 36
-        versionCode = currentVersionCode() + if (s23Only) 1 else 0
-        versionName = currentVersionName() + if (s23Only) "-s23-uapi5-r2" else ""
+        versionCode = currentVersionCode() + if (s23Only) 2 else 0
+        versionName = currentVersionName() + if (s23Only) "-s23-uapi5-r3" else ""
         buildConfigField("boolean", "S23_ONLY", s23Only.toString())
         manifestPlaceholders["appLabel"] = if (s23Only) "GhostSam S23" else "@string/app_name"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
