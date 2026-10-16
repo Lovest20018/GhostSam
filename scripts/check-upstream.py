@@ -31,6 +31,9 @@ def report(root: Path, config: dict, fetch: bool = False) -> dict:
     baseline = git(root, "rev-parse", "--verify", f'{upstream["baseline"]}^{{commit}}')
     target = git(root, "rev-parse", "--verify", f'{upstream["tracking_ref"]}^{{commit}}')
     git(root, "merge-base", "--is-ancestor", baseline, target)
+    reviewed = git(root, "rev-parse", "--verify", f'{upstream.get("reviewed_commit", baseline)}^{{commit}}')
+    git(root, "merge-base", "--is-ancestor", baseline, reviewed)
+    git(root, "merge-base", "--is-ancestor", reviewed, target)
     incoming = git(root, "diff", "--name-only", baseline, target).splitlines()
     local = git(root, "diff", "--name-only", baseline, "HEAD").splitlines()
     local_paths = set(local)
@@ -41,6 +44,9 @@ def report(root: Path, config: dict, fetch: bool = False) -> dict:
     return {
         "baseline": baseline,
         "upstream": target,
+        "reviewed": reviewed,
+        "unreviewed_commits": git(root, "log", "--oneline", f"{reviewed}..{target}").splitlines(),
+        "adopted_changes": upstream.get("adopted_changes", []),
         "incoming_commits": git(root, "log", "--oneline", f"{baseline}..{target}").splitlines(),
         "incoming_paths": incoming,
         "review_paths": review,
@@ -66,13 +72,16 @@ def main() -> int:
     else:
         print(f'Baseline: {result["baseline"]}')
         print(f'Upstream: {result["upstream"]}')
-        print(f'Incoming commits: {len(result["incoming_commits"])}')
+        print(f'Reviewed through: {result["reviewed"]}')
+        print(f'New commits awaiting review: {len(result["unreviewed_commits"])}')
+        print(f'Upstream commits since the integrated baseline: {len(result["incoming_commits"])}')
         for commit in result["incoming_commits"]:
             print(f"  {commit}")
         print(f'Files requiring S23 review: {len(result["review_paths"])}')
         for path in result["review_paths"]:
             print(f"  {path}")
         print(f'Pinned KernelSU: {result["kernelsu"]["revision"]}')
+        print("Reviewed commits are not automatically adopted; see the recorded review decisions.")
         if result["working_tree_changes"]:
             print("Working tree has local changes; preserve them before a future merge.")
         print("Report complete. No merge or source changes were performed.")

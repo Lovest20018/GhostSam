@@ -3,8 +3,10 @@ name: Build GhostSam S23
 on:
   workflow_dispatch:
   push:
-    branches: [codex/fix-s23-manager-r2, s23/maintenance]
-    tags: [s23-ksu-3.3.1-r3]
+    branches: [main]
+    tags: [s23-v*]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -19,7 +21,33 @@ env:
   S23_KMI: android13-5.15
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      application_id: ${{ steps.metadata.outputs.application_id }}
+      version_name: ${{ steps.metadata.outputs.version_name }}
+      version_code: ${{ steps.metadata.outputs.version_code }}
+      release_tag: ${{ steps.metadata.outputs.release_tag }}
+      release_notes: ${{ steps.metadata.outputs.release_notes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Validate the independent S23 version and publication tag
+        id: metadata
+        run: |
+          args=()
+          if [ "$GITHUB_REF_TYPE" = tag ]; then args+=(--tag "$GITHUB_REF_NAME"); fi
+          python3 scripts/s23-release.py "${args[@]}" --github-output "$GITHUB_OUTPUT"
+      - name: Test compatibility, packaging and release checks
+        run: |
+          cc -D_GNU_SOURCE -Wall -Wextra -Werror -Iexploit/src/common tests/ksu_control_test.c -o /tmp/ksu_control_test
+          /tmp/ksu_control_test
+          python3 -m unittest discover -s tests -p 'test_*.py' -v
+
   kernel-modules:
+    needs: version
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ylarod/ddk-min:android13-5.15-20260828
@@ -146,8 +174,12 @@ jobs:
           if-no-files-found: error
 
   apk:
-    needs: ksud
+    needs: [ksud, version]
     runs-on: ubuntu-latest
+    env:
+      S23_APPLICATION_ID: ${{ needs.version.outputs.application_id }}
+      S23_VERSION_NAME: ${{ needs.version.outputs.version_name }}
+      S23_VERSION_CODE: ${{ needs.version.outputs.version_code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -170,11 +202,6 @@ jobs:
       - name: Stage the rebuilt payloads
         run: |
           cp s23-payloads/ksud/ksud app/app/src/main/assets/payloads/ksud/ksud
-      - name: Test driver compatibility and APK packaging checks
-        run: |
-          cc -D_GNU_SOURCE -Wall -Wextra -Werror -Iexploit/src/common tests/ksu_control_test.c -o /tmp/ksu_control_test
-          /tmp/ksu_control_test
-          python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Test and build the S23 APK
         working-directory: app
         run: |
@@ -186,18 +213,20 @@ jobs:
           python3 scripts/verify-s23-apk.py "$apk" \
             --ksud s23-payloads/ksud/ksud \
             --dfr-module "app/app/src/main/assets/payloads/dirtyfrag/dfr_lkm-${S23_KMI}.ko"
-          test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest application-id "$apk")" = com.snothin.ghostsam.s23
-          test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$apk")" = 0.2.3-s23-uapi5-r3
-          test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-code "$apk")" = 63
+          test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest application-id "$apk")" = "$S23_APPLICATION_ID"
+          test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-name "$apk")" = "$S23_VERSION_NAME"
+          test "$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest version-code "$apk")" = "$S23_VERSION_CODE"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
       - name: Package the verified APK and build information
         run: |
           mkdir -p out
-          cp app/app/build/outputs/apk/debug/app-debug.apk out/GhostSam-S23-KernelSU-3.3.1.apk
+          cp app/app/build/outputs/apk/debug/app-debug.apk out/GhostSam-S23.apk
           cat > out/BUILD-INFO.txt <<EOF
-          application_id=com.snothin.ghostsam.s23
-          version_name=0.2.3-s23-uapi5-r3
-          version_code=63
+          product=GhostSam S23
+          application_id=$S23_APPLICATION_ID
+          version_name=$S23_VERSION_NAME
+          version_code=$S23_VERSION_CODE
+          release_policy=independent-prereleases
           ghostsam_revision=$GITHUB_SHA
           kernelsu_repository=$KERNELSU_REPOSITORY
           kernelsu_revision=$KERNELSU_REVISION
@@ -216,58 +245,66 @@ jobs:
           device_validation=not performed by this workflow
           EOF
           cd out
-          sha256sum GhostSam-S23-KernelSU-3.3.1.apk BUILD-INFO.txt > SHA256SUMS
+          sha256sum GhostSam-S23.apk BUILD-INFO.txt > SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
-          name: ghostsam-s23-uapi5-apk
+          name: ghostsam-s23-apk
           path: out/
           if-no-files-found: error
 
   publish:
-    if: github.repository == 'Lovest20018/GhostSam' && github.ref == 'refs/tags/s23-ksu-3.3.1-r3'
-    needs: apk
+    if: github.repository == 'Lovest20018/GhostSam' && startsWith(github.ref, 'refs/tags/s23-v')
+    needs: [apk, version]
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: s23-ksu-3.3.1-r3
+      RELEASE_TAG: ${{ needs.version.outputs.release_tag }}
+      RELEASE_NOTES: ${{ needs.version.outputs.release_notes }}
+      S23_APPLICATION_ID: ${{ needs.version.outputs.application_id }}
+      S23_VERSION_NAME: ${{ needs.version.outputs.version_name }}
+      S23_VERSION_CODE: ${{ needs.version.outputs.version_code }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: ghostsam-s23-uapi5-apk
+          name: ghostsam-s23-apk
           path: out
-      - name: Verify and publish the S23 manager compatibility test build
+      - name: Verify and publish the independent S23 test build
         run: |
           test "$GITHUB_REPOSITORY" = Lovest20018/GhostSam
-          test "$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')" = "$GITHUB_SHA"
+          test "$GITHUB_REF_NAME" = "$RELEASE_TAG"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq '.sha')" = "$GITHUB_SHA"
           (cd out && sha256sum -c SHA256SUMS)
           python3 - <<'PY'
           from pathlib import Path
           import os
 
           assets = Path("out")
-          assert {p.name for p in assets.iterdir()} == {"GhostSam-S23-KernelSU-3.3.1.apk", "BUILD-INFO.txt", "SHA256SUMS"}
-          info = (assets / "BUILD-INFO.txt").read_text()
-          assert f'ghostsam_revision={os.environ["GITHUB_SHA"]}' in info
-          assert "version_name=0.2.3-s23-uapi5-r3" in info
-          assert "version_code=63" in info
-          assert "samsung_compat=KDP,DEFEX,RKP" in info
-          assert "manager_observer=upstream-3.3.1-task_work-backport" in info
+          assert {p.name for p in assets.iterdir()} == {"GhostSam-S23.apk", "BUILD-INFO.txt", "SHA256SUMS"}
+          info = dict(line.split("=", 1) for line in (assets / "BUILD-INFO.txt").read_text().splitlines())
+          for field, variable in {
+              "ghostsam_revision": "GITHUB_SHA", "application_id": "S23_APPLICATION_ID",
+              "version_name": "S23_VERSION_NAME", "version_code": "S23_VERSION_CODE",
+              "kernelsu_revision": "KERNELSU_REVISION", "kmi": "S23_KMI",
+          }.items():
+              assert info[field] == os.environ[variable], field
+          assert info["samsung_compat"] == "KDP,DEFEX,RKP"
+          assert info["manager_observer"] == "upstream-3.3.1-task_work-backport"
           PY
-          cp docs/releases/s23-ksu-3.3.1-r3.zh.md RELEASE-NOTES.md
+          cp "$RELEASE_NOTES" RELEASE-NOTES.md
           printf '\n构建来源：https://github.com/%s/actions/runs/%s\n源码提交：`%s`\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$GITHUB_SHA" >> RELEASE-NOTES.md
           release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id")
           if [ -z "$release_id" ]; then
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
               --target "$GITHUB_SHA" --verify-tag --draft --prerelease \
-              --title 'GhostSam S23 r3 · 首页状态与授权提示更新' \
+              --title "GhostSam S23 $S23_VERSION_NAME" \
               --notes-file RELEASE-NOTES.md \
-              out/GhostSam-S23-KernelSU-3.3.1.apk out/BUILD-INFO.txt out/SHA256SUMS
+              out/GhostSam-S23.apk out/BUILD-INFO.txt out/SHA256SUMS
             release_id=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq ".[] | select(.tag_name == \"$RELEASE_TAG\") | .id")
           fi
           test -n "$release_id"
@@ -301,5 +338,5 @@ jobs:
           release = json.load(open("release.json"))
           assert release["tag_name"] == os.environ["RELEASE_TAG"]
           assert not release["draft"] and release["prerelease"]
-          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(f'Published [S23 r3]({release["html_url"]}) with three verified assets.\n')
+          Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(f'Published [{os.environ["RELEASE_TAG"]}]({release["html_url"]}) with three verified assets.\n')
           PY

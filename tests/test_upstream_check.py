@@ -97,6 +97,29 @@ class UpstreamCheckTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Unexpected upstream URL"):
             checker.report(self.root, self.config, fetch=True)
 
+    def test_reviewing_an_update_does_not_mark_it_integrated(self):
+        self.advance_upstream("app/home.kt")
+        reviewed = self.run_git("rev-parse", "refs/remotes/upstream/main")
+        self.config["ghostsam"]["reviewed_commit"] = reviewed
+        result = checker.report(self.root, self.config)
+        self.assertEqual(result["reviewed"], reviewed)
+        self.assertEqual(result["baseline"], self.baseline)
+        self.assertEqual(result["unreviewed_commits"], [])
+        self.assertEqual(result["incoming_paths"], ["app/home.kt"])
+        self.assertEqual(len(result["incoming_commits"]), 1)
+
+    def test_new_updates_after_the_review_checkpoint_remain_visible(self):
+        self.advance_upstream("app/first.kt")
+        reviewed = self.run_git("rev-parse", "refs/remotes/upstream/main")
+        self.config["ghostsam"]["reviewed_commit"] = reviewed
+        self.run_git("checkout", "--detach", reviewed)
+        self.write("app/second.kt", "next upstream change\n")
+        self.commit()
+        self.run_git("update-ref", "refs/remotes/upstream/main", self.run_git("rev-parse", "HEAD"))
+        result = checker.report(self.root, self.config)
+        self.assertEqual(len(result["unreviewed_commits"]), 1)
+        self.assertEqual(len(result["incoming_commits"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

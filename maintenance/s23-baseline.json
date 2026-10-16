@@ -1,9 +1,28 @@
 {
   "schema_version": 1,
+  "product": {
+    "name": "GhostSam S23",
+    "application_id": "com.snothin.ghostsam.s23",
+    "version_file": "app/s23-version.properties",
+    "tag_prefix": "s23-v",
+    "release_policy": "independent-prereleases",
+    "latest_published": {
+      "tag": "s23-ksu-3.3.1-r3",
+      "version_name": "0.2.3-s23-uapi5-r3",
+      "version_code": 63,
+      "source": "14f1343521dba0b3e03d1814daf4ae8d7a065b8d",
+      "device_validation": "pending"
+    }
+  },
   "ghostsam": {
     "upstream_url": "https://github.com/snothin/GhostSam.git",
     "default_branch": "main",
     "baseline": "818faef4a278353a22c3481a01a6eaedf8088a3d",
+    "integration_policy": "selective",
+    "reviewed_commit": "8fa2f68c39119eeea46f059057fecc5f371ee427",
+    "reviewed_on": "2026-10-16",
+    "review_log": "docs/upstream/2026-10-16-v0.2.4.zh.md",
+    "adopted_changes": [],
     "tracking_ref": "refs/remotes/upstream/main",
     "tracking_branch": "upstream-track",
     "customization_branch": "main",
@@ -32,6 +51,8 @@
     "app/app/src/main/java/com/snothin/ghostsam/data/prefs/",
     "app/app/src/main/assets/payloads/",
     "app/app/src/main/res/",
+    "exploit/src/chains/dirtyfrag/",
+    "exploit/src/common/",
     ".github/workflows/"
   ]
 }

@@ -6,10 +6,12 @@
 应用，基于 [snothin/GhostSam](https://github.com/snothin/GhostSam) 适配。
 本 fork 固定使用 DirtyFrag standalone 路径与官方 **KernelSU Manager 3.3.1**，
 配套构建 UAPI 5 驱动和 ksud。
+GhostSam S23 独立维护产品版本和发布节奏，上游变化经过审查后按需采用。
 
 [下载最新 r3 测试版 APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)
 · [S23 构建与兼容说明](docs/KernelSU-3.3.1.zh.md)
 · [应用首页与上游维护说明](docs/Home-copy-and-upstream.zh.md)
+· [独立产品与发布规则](docs/S23-product-and-releases.zh.md)
 
 ## 支持范围
 
@@ -48,6 +50,7 @@
 | --- | --- |
 | r2 | 已发布的测试版 APK，安装注意事项见对应 Release |
 | r3（`0.2.3-s23-uapi5-r3`，build 63） | [已发布测试版 APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)，包含新的首页状态和授权提示；CI 构建与检查已通过 |
+| `0.3.0-dev`（build 64） | 当前开发源码：独立版本与发布流程；尚未发布安装包 |
 
 r3 首页区分正在检测、管理器未安装、准备执行、执行中、已加载待授权、已启用。
 请下载 Release 附件中的 r3 APK 更新手机上的 r2。
@@ -62,10 +65,16 @@ r3 APK 尚未进行真机验证。
 完整构建可进入 [Actions](https://github.com/Lovest20018/GhostSam/actions/workflows/kernelsu-331.yml)，
 选择 **Build GhostSam S23**，在 **Run workflow** 中选择 `main` 手动运行。
 工作流从固定源码重建三星 KernelSU 驱动与 ksud，再构建、校验 S23 APK。
-成功后下载该次运行的 `ghostsam-s23-uapi5-apk` artifact。
+成功后下载该次运行的 `ghostsam-s23-apk` artifact。
 
-当前推送 `main` 不会自动启动该工作流。手动构建 `main` 会产出 artifact；
-推送 `s23-ksu-3.3.1-r3` 标签会完整构建，并在全部检查通过后发布 r3 测试版。
+推送 `main`、提交 PR 或手动运行会构建测试 artifact，不自动发布 Release。
+Gradle 默认构建 S23，版本单独读取 [`app/s23-version.properties`](app/s23-version.properties)，
+构建不自动递增版本号，也不读取旧上游版本号。
+
+新发布标签为 `s23-v<versionName>`，例如 `s23-v0.3.0-rc.1`。标签必须与
+版本文件一致，build 必须高于已发布 APK，提供对应发布说明，并通过完整构建和校验。
+现阶段统一发布测试版；`-dev` 版本只能生成 artifact。既有 r2/r3 Release 继续保留，
+具体操作见[发布规则](docs/S23-product-and-releases.zh.md)。
 
 本地构建需要 JDK 21、SDK 37.0、NDK 30.0.16248370、CMake 3.22.1，
 以及同源重建的 UAPI 5 payload。先按[构建说明](docs/KernelSU-3.3.1.zh.md)
@@ -81,11 +90,12 @@ KernelSU-Next 和 companion APK。
 
 ## 与上游的关系
 
-本 fork 的 S23 改动已合入 **`main` 主线**。原项目为
+**`main` 是独立维护的 S23 产品主线**。原项目为
 [snothin/GhostSam](https://github.com/snothin/GhostSam)，当前基于 v0.2.3
 （`818faef`）。上游完整工具包和机型列表见
 [上游原版说明](https://github.com/snothin/GhostSam/blob/818faef4a278353a22c3481a01a6eaedf8088a3d/README.zh.md)。
-S23 首页状态与中英文文案放在独立文件中，方便后续审查、合并上游更新。
+S23 首页状态与中英文文案放在独立文件中。2026-10-16 已审查上游 v0.2.4
+（`8fa2f68`），目前未采用，原因见[审查记录](docs/upstream/2026-10-16-v0.2.4.zh.md)。
 
 在已配置 `upstream` 远程的本地仓库中检查上游变化：
 
@@ -93,8 +103,9 @@ S23 首页状态与中英文文案放在独立文件中，方便后续审查、�
 python scripts/check-upstream.py --fetch
 ```
 
-检查器列出新增提交和需要审查的 S23 文件。后续在临时分支合并，验证后再整合到
-`main`，具体步骤见[维护说明](docs/Home-copy-and-upstream.zh.md)。
+检查器分别展示已整合基线、已审查提交和新增待审查提交；审查不代表已经采用。
+后续在临时分支移植需要的改动，记录来源与验证结果后再整合到 `main`，
+具体步骤见[维护说明](docs/Home-copy-and-upstream.zh.md)。
 KernelSU 单独固定在 `snothin/KernelSU` 的
 `abbd7be7fb5e0af607c2a85e02efae03044bba86`；同步 GhostSam 不会自动升级驱动基线。
 

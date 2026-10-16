@@ -13,13 +13,17 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
-val versionPropsFile = rootProject.file("version.properties")
-val s23Only = providers.gradleProperty("s23Only").map { it.toBoolean() }.getOrElse(false)
+val s23Only = providers.gradleProperty("s23Only").map { it.toBoolean() }.getOrElse(true)
+val versionPropsFile = rootProject.file(if (s23Only) "s23-version.properties" else "version.properties")
 
 fun readVersionProps(): Properties {
     val props = Properties()
     if (versionPropsFile.exists()) {
         versionPropsFile.inputStream().use { props.load(it) }
+    }
+    if (s23Only && (props.getProperty("versionCode")?.toIntOrNull()?.let { it > 0 } != true ||
+            props.getProperty("versionName").isNullOrBlank())) {
+        throw GradleException("S23 requires a positive versionCode and versionName in s23-version.properties")
     }
     return props
 }
@@ -43,8 +47,8 @@ android {
         if (s23Only) applicationId = "com.snothin.ghostsam.s23"
         minSdk = 33
         targetSdk = 36
-        versionCode = currentVersionCode() + if (s23Only) 2 else 0
-        versionName = currentVersionName() + if (s23Only) "-s23-uapi5-r3" else ""
+        versionCode = currentVersionCode()
+        versionName = currentVersionName()
         buildConfigField("boolean", "S23_ONLY", s23Only.toString())
         manifestPlaceholders["appLabel"] = if (s23Only) "GhostSam S23" else "@string/app_name"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -321,7 +325,8 @@ val bumpVersionCode by tasks.registering {
 }
 
 tasks.matching { it.name == "preBuild" }.configureEach {
-    dependsOn(bumpVersionCode, verifyPayloads)
+    dependsOn(verifyPayloads)
+    if (!s23Only) dependsOn(bumpVersionCode)
 }
 
 dependencies {

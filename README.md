@@ -6,10 +6,13 @@ A Samsung Galaxy S23 temporary root app, adapted from
 [snothin/GhostSam](https://github.com/snothin/GhostSam) for the China-market
 **SM-S9110 on firmware S9110ZCS8FZI1**. This fork uses DirtyFrag standalone
 and official **KernelSU Manager 3.3.1**, with matching UAPI 5 components.
+GhostSam S23 maintains its own product versions and release schedule. Upstream
+changes are reviewed and adopted selectively.
 
 [Download the latest r3 test APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)
 · [S23 build details (中文)](docs/KernelSU-3.3.1.zh.md)
 · [Home states and upstream maintenance (中文)](docs/Home-copy-and-upstream.zh.md)
+· [Independent release policy (中文)](docs/S23-product-and-releases.zh.md)
 
 ## Supported target
 
@@ -51,6 +54,7 @@ loaded driver when testing an updated build.
 | --- | --- |
 | r2 | Previously published test APK; see the release notes for installation details |
 | r3 (`0.2.3-s23-uapi5-r3`, build 63) | [Published test APK](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3); includes the revised home states and authorization hints; CI build and checks passed |
+| `0.3.0-dev` (build 64) | Current development source; independent versioning and release workflow; not a published release |
 
 The r3 home card distinguishes checking, manager missing, ready, running,
 loaded but awaiting su access, and enabled. These changes require a new APK;
@@ -67,11 +71,19 @@ For a complete build, open [Actions](https://github.com/Lovest20018/GhostSam/act
 select **Build GhostSam S23**, choose `main`, and use **Run workflow**.
 The workflow rebuilds the Samsung KernelSU driver and ksud from the pinned
 source, then builds and verifies the S23 APK. Download the
-`ghostsam-s23-uapi5-apk` artifact from a successful run.
+`ghostsam-s23-apk` artifact from a successful run.
 
-Pushes to `main` currently do not trigger this workflow. Manual builds from
-`main` produce artifacts. The `s23-ksu-3.3.1-r3` tag triggers a complete build
-and publishes the r3 test release only after all checks pass.
+Pushes to `main`, pull requests, and manual runs build test artifacts without
+publishing a release. S23 is the default Gradle build. Its version comes from
+[`app/s23-version.properties`](app/s23-version.properties), independently of
+the legacy upstream version file, and builds do not increment it.
+
+New releases use `s23-v<versionName>` tags, for example `s23-v0.3.0-rc.1`.
+Publication requires an exact version/tag match, a build number above the
+latest published APK, release notes, and a successful complete build. All
+current releases are prereleases; `-dev` versions produce artifacts only.
+The existing r2/r3 releases remain available. See the
+[release policy](docs/S23-product-and-releases.zh.md).
 
 Local builds require JDK 21, SDK 37.0, NDK 30.0.16248370, CMake 3.22.1, and
 the matching rebuilt UAPI 5 payloads. Follow the
@@ -87,12 +99,13 @@ It excludes other KMIs, KernelSU-Next, and the companion APK.
 
 ## Upstream maintenance
 
-`main` is this fork's current S23 integration branch. The upstream source
-remains [snothin/GhostSam](https://github.com/snothin/GhostSam), based on
+`main` is the independently maintained S23 product branch. Its integrated
+upstream source remains [snothin/GhostSam](https://github.com/snothin/GhostSam), based on
 v0.2.3 (`818faef`). The original toolkit and its device coverage are described
 in the [upstream README](https://github.com/snothin/GhostSam/blob/818faef4a278353a22c3481a01a6eaedf8088a3d/README.md).
-S23 home states and localized copy live in separate files to help review
-future upstream merges.
+S23 home states and localized copy live in separate files. Upstream v0.2.4
+(`8fa2f68`) was reviewed on 2026-10-16 and has not been adopted; the
+[review record (中文)](docs/upstream/2026-10-16-v0.2.4.zh.md) explains the decision.
 
 Check upstream changes from a local checkout with the configured `upstream`
 remote:
@@ -101,9 +114,10 @@ remote:
 python scripts/check-upstream.py --fetch
 ```
 
-The command reports incoming changes and files needing S23 review. Merge
-reviewed updates through a temporary branch, validate them, then integrate
-into `main`. See the [maintenance guide](docs/Home-copy-and-upstream.zh.md).
+The command distinguishes the integrated baseline, the last reviewed commit,
+and new commits awaiting review. Review does not imply adoption. Apply selected
+changes on a temporary branch and record their source and validation before
+integrating into `main`. See the [maintenance guide](docs/Home-copy-and-upstream.zh.md).
 KernelSU is pinned separately to `snothin/KernelSU` commit
 `abbd7be7fb5e0af607c2a85e02efae03044bba86`; updating GhostSam does not change
 that driver baseline automatically.

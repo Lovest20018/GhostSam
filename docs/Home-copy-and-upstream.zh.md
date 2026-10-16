@@ -1,9 +1,10 @@
 # S23 首页文案与上游同步说明
 
-整理日期：2026-10-15。
+更新日期：2026-10-16。
 
-本文描述 fork 主线 `main` 的当前源码。源码版本为 `0.2.3-s23-uapi5-r3`（build 63），
-已经生成的 r2 APK 不包含本轮界面整理。
+本文描述独立维护的 S23 产品主线 `main`。当前开发源码为 `0.3.0-dev`（build 64），
+独立产品版本与发布规则见 [S23-product-and-releases.zh.md](S23-product-and-releases.zh.md)。
+最新已发布版本仍是 `0.2.3-s23-uapi5-r3`（build 63）。
 [r3 测试版](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)
 已由 [Actions #6](https://github.com/Lovest20018/GhostSam/actions/runs/38679062368)
 完整构建并发布，源码为 `14f1343`；r3 真机验证尚未进行。
@@ -69,12 +70,13 @@ S23 构建固定使用 standalone 路径和官方 KernelSU。首页标题为 **G
 
 - `origin`：用户 fork `Lovest20018/GhostSam`。
 - `upstream`：原作者仓库 `snothin/GhostSam`。
-- `main`：fork 的 S23 主线，已合入此前的 3 个维护提交并推送到 `origin/main`。
-- `upstream-track`：本地跟踪 `upstream/main`。
+- `main`：独立维护的 S23 产品主线，按自己的版本与验证结果发布。
+- `upstream/main`：fetch 刷新的上游引用；`upstream-track` 是此前保留的本地基线分支。
 - `s23/maintenance`：保留此前整理的本地分支，后续同步从最新 `main` 开始。
 - 上游基线：`818faef4a278353a22c3481a01a6eaedf8088a3d`，v0.2.3。
 - 既有源码保存提交：`5492115`。本轮整理在其后单独提交。
-- 已补齐上游可用历史；2026-10-15 查询到上游 main 仍为上述基线。
+- 最近已审查：`8fa2f68c39119eeea46f059057fecc5f371ee427`，v0.2.4，2026-10-16。
+- v0.2.4 当前未采用；[审查记录](upstream/2026-10-16-v0.2.4.zh.md)列出候选改动与原因。
 
 机器可读的基线、目标设备、KernelSU 固定版本及重点审查路径保存于
 `maintenance/s23-baseline.json`。
@@ -83,7 +85,7 @@ S23 构建固定使用 standalone 路径和官方 KernelSU。首页标题为 **G
 `abbd7be7fb5e0af607c2a85e02efae03044bba86`，UAPI 5、Manager 3.3.1、
 KMI `android13-5.15`。本轮不升级内核或 ksud。
 
-## 后续检查与合并
+## 后续审查与选择性移植
 
 在仓库根目录运行：
 
@@ -97,34 +99,36 @@ python scripts/check-upstream.py --fetch
 python scripts/check-upstream.py --json
 ```
 
-检查器验证上游地址和基线祖先关系，列出新增提交及 S23 重点审查文件。
+检查器验证上游地址和祖先关系，分别列出整合基线、已审查位置、新增待审查提交，
+以及从整合基线起仍需评估的文件。已审查的未采用改动不会从基线差异中消失。
 它只生成报告，不执行合并、不改源码、不移动维护分支。报告不是兼容性验证。
 
-决定同步后，先保存工作目录，再在临时分支合并。下列临时分支名称仅作示例：
+决定采用某项改动后，先保存工作目录，再在临时分支移植。下列分支名称仅作示例：
 
 ```powershell
 git switch main
 git status --short
-git switch -c s23/merge-review
-git merge upstream/main
+git switch -c s23/upstream-review
 ```
 
-工作目录有未保存改动时先处理，不能直接覆盖。冲突解决后检查 S23 目标限制、
+在此分支选择需要的提交或补丁；遇到包含无关变化的大提交，按组件移植并记录来源。
+工作目录有未保存改动时先处理，不能直接覆盖。移植后检查 S23 目标限制、
 首页状态和点击动作、standalone 结果处理、资源、构建脚本及 payload 校验。
 验证通过后，将临时分支的结果合并回 `main` 并推送；不要把 S23 提交写入 `upstream-track`。
-同时将 `maintenance/s23-baseline.json` 中的 GhostSam 基线更新为已经接受的
-上游提交，再运行检查器和测试；后续报告才只包含下一批增量。
+在 `maintenance/s23-baseline.json` 更新 `reviewed_commit` 与审查记录。
+选择性移植的改动写入 `adopted_changes`，记录上游来源、本地提交和验证结果。
+只有完整接受对应上游历史时才移动 `baseline`；仅完成审查或采用少量补丁不能
+把整版标为已合入。不要把 S23 提交写入上游跟踪分支。
 
 应用与 Samsung KernelSU 属于两份独立上游。应用合并期间继续保留固定 KernelSU
 提交；内核升级另行核对接口并同源重建产物。
 
 ## 构建与验证
 
-维护分支已加入 `Build GhostSam S23` 构建触发范围。该分支运行构建与测试。
-`s23-ksu-3.3.1-r3` 标签会触发完整构建，发布步骤只对这个标签开放，
-并核对源码提交、APK 版本、三个附件及其 SHA256，不覆盖旧 r2。
-当前 `main` 不在 push 自动构建范围内，可从 Actions 手动选择 `main` 运行，
-成功后下载 artifact。r3 的上述标签构建已通过并发布，普通主线推送仍不会启动构建。
+`Build GhostSam S23` 对 `main` 推送、PR 与手动运行执行构建和测试，只产出
+`ghostsam-s23-apk` artifact。新 `s23-v<versionName>` 标签通过版本、发布说明、
+完整构建、载荷与签名检查后发布测试版。开发版本不能发布，历史 r2/r3 不重发。
+S23 版本取自 `app/s23-version.properties`，构建不修改版本文件。
 
 完整 Android 构建仍需要仓库指定的 JDK 21、SDK 37.0、NDK 30、CMake 及同源
 UAPI 5 payload。不能使用旧资产跳过检查：
@@ -134,7 +138,7 @@ cd app
 .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug -Ps23Only=true --no-daemon --no-configuration-cache
 ```
 
-本轮验证包括首页状态和动作测试、S23 目标机型测试、独立资源与通用文案检查、
+验证覆盖首页状态和动作测试、S23 目标机型测试、独立资源与通用文案检查、
 APK 打包校验测试、上游检查器的隔离 Git 仓库测试，以及 Android 资源编译。
 完整 APK 构建和真机验证结果需另行记录，不能由这些检查推定成功。
 

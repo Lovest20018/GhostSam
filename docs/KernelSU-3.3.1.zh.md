@@ -61,16 +61,17 @@ APK 显示名称为 **GhostSam S23**，包名为 `com.snothin.ghostsam.s23`，
    `main` 的 push 当前不触发自动构建。
 2. 工作流依次构建 Samsung KernelSU 模块、嵌入该模块的 ksud、S23 APK。
    APK 构建使用 JDK 21、SDK 37.0、NDK 30.0.16248370 和 CMake 3.22.1。
-3. 成功后下载 `ghostsam-s23-uapi5-apk` artifact，内含
-   `GhostSam-S23-KernelSU-3.3.1.apk`、构建信息和 `SHA256SUMS`。
+3. 成功后下载 `ghostsam-s23-apk` artifact，内含
+   `GhostSam-S23.apk`、构建信息和 `SHA256SUMS`。
    在解压目录执行 `sha256sum -c SHA256SUMS` 核对文件。
-   `main` 的手动构建只生成 artifact。推送 `s23-ksu-3.3.1-r3` 标签会触发
-   完整构建，全部检查通过后发布 r3 测试版 Release，不覆盖旧 r2。
+   `main` 推送、PR 和手动构建只生成 `ghostsam-s23-apk` artifact。
+   新版按 `s23-v<versionName>` 标签独立发布测试版；详见
+   [产品与发布规则](S23-product-and-releases.zh.md)。历史 r2/r3 不重发。
 
-当前源码版本为 r3，包含首页状态与授权提示整理。已发布的 r2 APK 不含这些
-界面变化；[r3 测试版](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)
+当前源码进入 `0.3.0-dev`（build 64），只调整产品与发布维护方式，底层仍固定上述基线。
+最新已发布的 [r3 测试版](https://github.com/Lovest20018/GhostSam/releases/tag/s23-ksu-3.3.1-r3)
 已从 `14f1343` 完整构建并发布，CI 构建、测试、包名与版本、载荷和签名检查通过。
-r3 APK 尚未进行真机验证。
+r3 APK 尚未进行真机验证；当前开发源码尚未发布。
 
 APK 是标准 debug 签名的测试版本。工作流验证包名、APK 签名、两个 payload
 与本次构建输入完全一致，以及 arm64 standalone JNI 库存在。
